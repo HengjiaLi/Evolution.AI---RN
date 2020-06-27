@@ -11,8 +11,7 @@ import random
 import numpy as np
 import csv
 
-os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
