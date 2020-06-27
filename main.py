@@ -11,12 +11,12 @@ import random
 import numpy as np
 import csv
 
-<<<<<<< HEAD
+
 os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-=======
 
->>>>>>> e4746bfb099b1b83c2c2acbdae5a5bce79e804ae
+
+
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
