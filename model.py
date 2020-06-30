@@ -10,14 +10,14 @@ class ConvInputModel(nn.Module):
     def __init__(self):
         super(ConvInputModel, self).__init__()
         
-        self.conv1 = nn.Conv2d(3, 24, 32, stride=2, padding=1)
-        self.batchNorm1 = nn.BatchNorm2d(24)
-        self.conv2 = nn.Conv2d(24, 24, 64 stride=2, padding=1)
-        self.batchNorm2 = nn.BatchNorm2d(24)
-        self.conv3 = nn.Conv2d(24, 24, 128, stride=2, padding=1)
-        self.batchNorm3 = nn.BatchNorm2d(24)
-        self.conv4 = nn.Conv2d(24, 24, 256, stride=2, padding=1)
-        self.batchNorm4 = nn.BatchNorm2d(24)
+        self.conv1 = nn.Conv2d(3, 32, 3, stride=2, padding=1)
+        self.batchNorm1 = nn.BatchNorm2d(32)
+        self.conv2 = nn.Conv2d(32, 64, 3,stride=2, padding=1)
+        self.batchNorm2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 128, 3, stride=2, padding=1)
+        self.batchNorm3 = nn.BatchNorm2d(128)
+        self.conv4 = nn.Conv2d(128, 256, 3, stride=2, padding=1)
+        self.batchNorm4 = nn.BatchNorm2d(256)
 
         
     def forward(self, img):
@@ -92,10 +92,10 @@ class RN(BasicModel):
         
         if self.relation_type == 'ternary':
             ##(number of filters per object+coordinate of object)*3+question vector
-            self.g_fc1 = nn.Linear((24+2)*3+18, 256)
+            self.g_fc1 = nn.Linear((256+2)*3+18, 256)
         else:
             ##(number of filters per object+coordinate of object)*2+question vector
-            self.g_fc1 = nn.Linear((24+2)*2+18, 2000)
+            self.g_fc1 = nn.Linear((256+2)*2+18, 2000)
 
         self.g_fc2 = nn.Linear(2000, 2000)
         self.g_fc3 = nn.Linear(2000, 2000)
