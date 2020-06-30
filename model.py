@@ -131,18 +131,15 @@ class RN(BasicModel):
 
 
     def forward(self, img, qst):
-        x = self.conv(img) ## x = (64 x 24 x 5 x 5)
-        
+        x = self.conv(img) ## x = (64(batch_size) x 256 x 5 x 5) 
         """g"""
-        mb = x.size()[0]
-        n_channels = x.size()[1]
-        d = x.size()[2]
-        # x_flat = (64 x 25 x 24)
-        x_flat = x.view(mb,n_channels,d*d).permute(0,2,1)
+        mb = x.size()[0]#64
+        n_channels = x.size()[1]#256
+        d = x.size()[2]#5
+        x_flat = x.view(mb,n_channels,d*d).permute(0,2,1)#64 x 25 x 256
         
         # add coordinates
-        x_flat = torch.cat([x_flat, self.coord_tensor],2)
-        
+        x_flat = torch.cat([x_flat, self.coord_tensor],2)#64 x 25 x (256+2)
 
         if self.relation_type == 'ternary':
             # add question everywhere
@@ -172,22 +169,22 @@ class RN(BasicModel):
             x_ = x_full.view(mb * (d * d) * (d * d) * (d * d), 96)  # (64*25*25*25x3*26+18) = (1.000.000, 96)
         else:
             # add question everywhere
-            qst = torch.unsqueeze(qst, 1)
-            qst = qst.repeat(1, 25, 1)
-            qst = torch.unsqueeze(qst, 2)
+            qst = torch.unsqueeze(qst, 1)# (64x1x18)
+            qst = qst.repeat(1, 25, 1)# (64x25x18)
+            qst = torch.unsqueeze(qst, 2)# (64x25x1x18)
 
             # cast all pairs against each other
-            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x26+18)
-            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x26+18)
-            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x26+18)
-            x_j = torch.cat([x_j, qst], 3)
-            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x26+18)
+            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x258+18)
+            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x258+18)
+            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x258+18)
+            x_j = torch.cat([x_j, qst], 3)# (64x25x1x276)
+            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x276)
             
             # concatenate all together
-            x_full = torch.cat([x_i,x_j],3) # (64x25x25x2*26+18)
+            x_full = torch.cat([x_i,x_j],3) # (64x25x25x(276+258)=534)
         
             # reshape for passing through network
-            x_ = x_full.view(mb * (d * d) * (d * d), 70)  # (64*25*25x2*26*18) = (40.000, 70)
+            x_ = x_full.view(mb * (d * d) * (d * d), 534)  # (64x25x25,534)
             
         x_ = self.g_fc1(x_)
         x_ = F.relu(x_)
@@ -197,12 +194,11 @@ class RN(BasicModel):
         x_ = F.relu(x_)
         x_ = self.g_fc4(x_)
         x_ = F.relu(x_)
-        
         # reshape again and sum
         if self.relation_type == 'ternary':
-            x_g = x_.view(mb, (d * d) * (d * d) * (d * d), 256)
+            x_g = x_.view(mb, (d * d) * (d * d) * (d * d), 2000)
         else:
-            x_g = x_.view(mb, (d * d) * (d * d), 256)
+            x_g = x_.view(mb, (d * d) * (d * d), 2000)
 
         x_g = x_g.sum(1).squeeze()
         
