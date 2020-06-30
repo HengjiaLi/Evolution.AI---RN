@@ -10,13 +10,13 @@ class ConvInputModel(nn.Module):
     def __init__(self):
         super(ConvInputModel, self).__init__()
         
-        self.conv1 = nn.Conv2d(3, 24, 3, stride=2, padding=1)
+        self.conv1 = nn.Conv2d(3, 24, 32, stride=2, padding=1)
         self.batchNorm1 = nn.BatchNorm2d(24)
-        self.conv2 = nn.Conv2d(24, 24, 3, stride=2, padding=1)
+        self.conv2 = nn.Conv2d(24, 24, 64 stride=2, padding=1)
         self.batchNorm2 = nn.BatchNorm2d(24)
-        self.conv3 = nn.Conv2d(24, 24, 3, stride=2, padding=1)
+        self.conv3 = nn.Conv2d(24, 24, 128, stride=2, padding=1)
         self.batchNorm3 = nn.BatchNorm2d(24)
-        self.conv4 = nn.Conv2d(24, 24, 3, stride=2, padding=1)
+        self.conv4 = nn.Conv2d(24, 24, 256, stride=2, padding=1)
         self.batchNorm4 = nn.BatchNorm2d(24)
 
         
@@ -41,14 +41,17 @@ class FCOutputModel(nn.Module):
     def __init__(self):
         super(FCOutputModel, self).__init__()
 
-        self.fc2 = nn.Linear(256, 256)
-        self.fc3 = nn.Linear(256, 10)
-
+        self.fc2 = nn.Linear(1000, 500)
+        self.fc3 = nn.Linear(500, 100)
+        self.fc4 = nn.Linear(100, 10)
     def forward(self, x):
         x = self.fc2(x)
         x = F.relu(x)
         x = F.dropout(x)
         x = self.fc3(x)
+        x = F.relu(x)
+        x = F.dropout(x)
+        x = self.fc4(x)
         return F.log_softmax(x, dim=1)
 
 class BasicModel(nn.Module):
@@ -92,13 +95,13 @@ class RN(BasicModel):
             self.g_fc1 = nn.Linear((24+2)*3+18, 256)
         else:
             ##(number of filters per object+coordinate of object)*2+question vector
-            self.g_fc1 = nn.Linear((24+2)*2+18, 256)
+            self.g_fc1 = nn.Linear((24+2)*2+18, 2000)
 
-        self.g_fc2 = nn.Linear(256, 256)
-        self.g_fc3 = nn.Linear(256, 256)
-        self.g_fc4 = nn.Linear(256, 256)
+        self.g_fc2 = nn.Linear(2000, 2000)
+        self.g_fc3 = nn.Linear(2000, 2000)
+        self.g_fc4 = nn.Linear(2000, 2000)
 
-        self.f_fc1 = nn.Linear(256, 256)
+        self.f_fc1 = nn.Linear(2000, 1000)
 
         self.coord_oi = torch.FloatTensor(args.batch_size, 2)
         self.coord_oj = torch.FloatTensor(args.batch_size, 2)
@@ -215,7 +218,7 @@ class CNN_MLP(BasicModel):
         super(CNN_MLP, self).__init__(args, 'CNNMLP')
 
         self.conv  = ConvInputModel()
-        self.fc1   = nn.Linear(5*5*24 + 18, 256)  # question concatenated to all
+        self.fc1   = nn.Linear(5*5*24 + 18, 2000)  # question concatenated to all
         self.fcout = FCOutputModel()
 
         self.optimizer = optim.Adam(self.parameters(), lr=args.lr)

@@ -57,7 +57,7 @@ def center_generate(objects):
 
 
 
-def build_dataset():
+def build_dataset():#for each image
     objects = []
     img = np.ones((img_size,img_size,3)) * 255
     for color_id,color in enumerate(colors):  
@@ -65,11 +65,11 @@ def build_dataset():
         if random.random()<0.5:
             start = (center[0]-size, center[1]-size)
             end = (center[0]+size, center[1]+size)
-            cv2.rectangle(img, start, end, color, -1)
+            cv2.rectangle(img, start, end, color, -1)#artificially generates recs
             objects.append((color_id,center,'r'))
         else:
             center_ = (center[0], center[1])
-            cv2.circle(img, center_, size, color, -1)
+            cv2.circle(img, center_, size, color, -1)#artificially generates circles
             objects.append((color_id,center,'c'))
 
 
