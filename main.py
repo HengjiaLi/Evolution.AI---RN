@@ -11,12 +11,8 @@ import random
 import numpy as np
 import csv
 
-
 os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
-
-
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -290,4 +286,4 @@ with open(f'./{args.model}_{args.seed}_log.csv', 'w') as log_file:
 
         csv_writer.writerow([epoch, train_acc_ternary, train_acc_binary,
                          train_acc_unary, test_acc_ternary, test_acc_binary, test_acc_unary])
-        model.save_model(epoch)
+    model.save_model(epoch)

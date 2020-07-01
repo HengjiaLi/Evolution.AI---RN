@@ -1,4 +1,4 @@
-# RN without Positional Encoding
+# RN uses the paper's paramters
 import numpy as np
 import torch
 import torch.nn as nn
@@ -96,7 +96,7 @@ class RN(BasicModel):
             self.g_fc1 = nn.Linear((256+2)*3+18, 256)
         else:
             ##(number of filters per object+coordinate of object)*2+question vector
-            self.g_fc1 = nn.Linear((256)*2+18, 2000)
+            self.g_fc1 = nn.Linear((256+2)*2+18, 2000)
 
         self.g_fc2 = nn.Linear(2000, 2000)
         self.g_fc3 = nn.Linear(2000, 2000)
@@ -140,7 +140,7 @@ class RN(BasicModel):
         x_flat = x.view(mb,n_channels,d*d).permute(0,2,1)#64 x 25 x 256
         
         # add coordinates
-        #x_flat = torch.cat([x_flat, self.coord_tensor],2)#64 x 25 x (256+2)
+        x_flat = torch.cat([x_flat, self.coord_tensor],2)#64 x 25 x (256+2)
 
         if self.relation_type == 'ternary':
             # add question everywhere
@@ -175,17 +175,17 @@ class RN(BasicModel):
             qst = torch.unsqueeze(qst, 2)# (64x25x1x18)
 
             # cast all pairs against each other
-            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x256+18)
-            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x256+18)
-            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x256+18)
-            x_j = torch.cat([x_j, qst], 3)# (64x25x1x274)
-            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x274)
-
+            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x258+18)
+            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x258+18)
+            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x258+18)
+            x_j = torch.cat([x_j, qst], 3)# (64x25x1x276)
+            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x276)
+            
             # concatenate all together
-            x_full = torch.cat([x_i,x_j],3) # (64x25x25x(274+256)=530)
+            x_full = torch.cat([x_i,x_j],3) # (64x25x25x(276+258)=534)
         
             # reshape for passing through network
-            x_ = x_full.view(mb * (d * d) * (d * d), 530)  # (64x25x25,530)
+            x_ = x_full.view(mb * (d * d) * (d * d), 534)  # (64x25x25,534)
             
         x_ = self.g_fc1(x_)
         x_ = F.relu(x_)
