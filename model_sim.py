@@ -1,3 +1,4 @@
+#simple RN
 import numpy as np
 import torch
 import torch.nn as nn
@@ -89,10 +90,10 @@ class RN(BasicModel):
         
         if self.relation_type == 'ternary':
             ##(number of filters per object+coordinate of object)*3+question vector
-            self.g_fc1 = nn.Linear((24)*3+18, 256)
+            self.g_fc1 = nn.Linear((24+2)*3+18, 256)
         else:
             ##(number of filters per object+coordinate of object)*2+question vector
-            self.g_fc1 = nn.Linear((24)*2+18, 256)
+            self.g_fc1 = nn.Linear((24+2)*2+18, 256)
 
         self.g_fc2 = nn.Linear(256, 256)
         self.g_fc3 = nn.Linear(256, 256)
@@ -138,7 +139,7 @@ class RN(BasicModel):
         x_flat = x.view(mb,n_channels,d*d).permute(0,2,1)
         
         # add coordinates
-        #x_flat = torch.cat([x_flat, self.coord_tensor],2)
+        x_flat = torch.cat([x_flat, self.coord_tensor],2)
         
 
         if self.relation_type == 'ternary':
@@ -174,17 +175,17 @@ class RN(BasicModel):
             qst = torch.unsqueeze(qst, 2)
 
             # cast all pairs against each other
-            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x24+18)
-            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x24+18)
-            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x24+18)
+            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x26+18)
+            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x26+18)
+            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x26+18)
             x_j = torch.cat([x_j, qst], 3)
-            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x24+18)
+            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x26+18)
             
             # concatenate all together
-            x_full = torch.cat([x_i,x_j],3) # (64x25x25x2*24+18)
+            x_full = torch.cat([x_i,x_j],3) # (64x25x25x2*26+18)
         
             # reshape for passing through network
-            x_ = x_full.view(mb * (d * d) * (d * d), 66)  # (64*25*25x(2*24+18)) = (40.000, 66)
+            x_ = x_full.view(mb * (d * d) * (d * d), 70)  # (64*25*25x2*26*18) = (40.000, 70)
             
         x_ = self.g_fc1(x_)
         x_ = F.relu(x_)
