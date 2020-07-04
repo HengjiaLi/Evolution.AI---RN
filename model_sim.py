@@ -137,7 +137,7 @@ class RN(BasicModel):
         # add coordinates
         x_flat = torch.cat([x_flat, self.coord_tensor],2)
         
-        if self.relation_type != 'ternary'::
+        if self.relation_type != 'ternary':
             # add question everywhere
             qst = torch.unsqueeze(qst, 1)
             qst = qst.repeat(1, 25, 1)
