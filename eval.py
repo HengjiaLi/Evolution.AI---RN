@@ -5,7 +5,7 @@ import torch
 import argparse
 import random
 from main import load_data,cvt_data_axis
-from model_sim import RN
+from model_simnoPE import RN
 
 # SPLIT DATASET
 def split_data(data,type_):
@@ -53,15 +53,16 @@ parser.add_argument('--relation-type', type=str, default='binary',
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 model = RN(args)
-#path="./All Model/simple_RNnoPE.pth"
-path="./All Model/simple_RN.pth"
+
+path="./All Model/simple_RNnoPE.pth"
+#path="./All Model/simple_RN.pth"
 if torch.cuda.is_available():
-    os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    # os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     model.load_state_dict(torch.load(path))
 else:
     model.load_state_dict(torch.load(path,map_location=torch.device('cpu')))
-
+model.eval()
 
 # TEST
 rel_train, rel_test, norel_train, norel_test = load_data()
