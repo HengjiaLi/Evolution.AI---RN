@@ -11,11 +11,11 @@ rel_train, rel_test, norel_train, norel_test = load_data()
 # SPLIT DATASET
 norel_pos = []#non-relational questions that require positional info
 norel_nopos = []#non-relational questions that does not require positional info
-for i in range(len(norel_train)):
-    if norel_train[i][1][9]==1 or norel_train[i][1][10]==1:
-        norel_pos.append(norel_train[i])
+for i in range(len(norel_test)):
+    if norel_test[i][1][9]==1 or norel_test[i][1][10]==1:
+        norel_pos.append(norel_test[i])
     else:
-        norel_nopos.append(norel_train[i])
+        norel_nopos.append(norel_test[i])
 random.shuffle(norel_pos)
 random.shuffle(norel_nopos)
 norel_pos = cvt_data_axis(norel_pos)
@@ -48,6 +48,7 @@ if torch.cuda.is_available():
     model.load_state_dict(torch.load(path))
 else:
     model.load_state_dict(torch.load(path,map_location=torch.device('cpu')))
-
-acc,l =model.test_(torch.FloatTensor(norel_pos[0]), torch.FloatTensor(norel_pos[1]), torch.FloatTensor(norel_pos[2]))
+print(np.shape(norel_pos))
+print(np.shape(norel_nopos))
+acc,l =model.test_(torch.FloatTensor(norel_pos[0]), torch.FloatTensor(norel_pos[1]), torch.LongTensor(norel_pos[2]))
 print('\n Test set: Unary accuracy (need pos info): {:.0f}%\n'.format(acc))
