@@ -48,7 +48,10 @@ if torch.cuda.is_available():
     model.load_state_dict(torch.load(path))
 else:
     model.load_state_dict(torch.load(path,map_location=torch.device('cpu')))
-print(np.shape(norel_pos))
-print(np.shape(norel_nopos))
+
 acc,l =model.test_(torch.FloatTensor(norel_pos[0]), torch.FloatTensor(norel_pos[1]), torch.LongTensor(norel_pos[2]))
 print('\n Test set: Unary accuracy (need pos info): {:.0f}%\n'.format(acc))
+
+acc,l =model.test_(torch.FloatTensor(norel_nopos[0]), torch.FloatTensor(norel_nopos[1]), torch.LongTensor(norel_nopos[2]))
+print('\n Test set: Unary accuracy (need no pos info): {:.0f}%\n'.format(acc))
+
