@@ -121,7 +121,7 @@ def build_dataset():#for each image
         question[subtype+sub_q_type_idx] = 1
         binary_questions.append(question)
 
-        if subtype == 2:#10
+        if subtype == 0:#8
             """closest-to->rectangle/circle"""
             my_obj = objects[color][1]
             dist_list = [((my_obj - obj[1]) ** 2).sum() for obj in objects]
@@ -142,7 +142,7 @@ def build_dataset():#for each image
             else:
                 answer = 3
 
-        elif subtype == 0:#8
+        elif subtype == 2:#10
             """count->1~6"""
             my_obj = objects[color][2]
             count = -1
