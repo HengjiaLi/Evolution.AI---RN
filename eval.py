@@ -53,7 +53,8 @@ parser.add_argument('--relation-type', type=str, default='binary',
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 model = RN(args)
-path="./All Model/simple_RNnoPE.pth"
+#path="./All Model/simple_RNnoPE.pth"
+path="./All Model/simple_RN.pth"
 if torch.cuda.is_available():
     model.load_state_dict(torch.load(path))
 else:
@@ -73,3 +74,4 @@ acc,l =model.test_(torch.FloatTensor(rel_pos[0]), torch.FloatTensor(rel_pos[1]),
 print('\n Test set: Binary accuracy (need pos info): {:.0f}%\n'.format(acc))
 acc,l =model.test_(torch.FloatTensor(rel_nopos[0]), torch.FloatTensor(rel_nopos[1]), torch.LongTensor(rel_nopos[2]))
 print('\n Test set: Binary accuracy (need no pos info): {:.0f}%\n'.format(acc))
+
