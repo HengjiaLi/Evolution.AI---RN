@@ -224,42 +224,41 @@ def load_data():
     
     return (rel_train, rel_test, norel_train, norel_test)
     
+if __name__ == "__main__":
+    rel_train, rel_test, norel_train, norel_test = load_data()
+    try:
+        os.makedirs(model_dirs)
+    except:
+        print('directory {} already exists'.format(model_dirs))
 
-rel_train, rel_test, norel_train, norel_test = load_data()
+    if args.resume:
+        filename = os.path.join(model_dirs, args.resume)
+        if os.path.isfile(filename):
+            print('==> loading checkpoint {}'.format(filename))
+            checkpoint = torch.load(filename)
+            model.load_state_dict(checkpoint)
+            print('==> loaded checkpoint {}'.format(filename))
 
-try:
-    os.makedirs(model_dirs)
-except:
-    print('directory {} already exists'.format(model_dirs))
+    with open(f'./{args.model}_{args.seed}_log.csv', 'w') as log_file:
+        csv_writer = csv.writer(log_file, delimiter=',')
+        csv_writer.writerow(['epoch', 'train_acc_rel',
+                        'train_acc_norel', 'test_acc_rel', 'test_acc_norel'])
 
-if args.resume:
-    filename = os.path.join(model_dirs, args.resume)
-    if os.path.isfile(filename):
-        print('==> loading checkpoint {}'.format(filename))
-        checkpoint = torch.load(filename)
-        model.load_state_dict(checkpoint)
-        print('==> loaded checkpoint {}'.format(filename))
+        print(f"Training {args.model} {f'({args.relation_type})' if args.model == 'RN' else ''} model...")
 
-with open(f'./{args.model}_{args.seed}_log.csv', 'w') as log_file:
-    csv_writer = csv.writer(log_file, delimiter=',')
-    csv_writer.writerow(['epoch', 'train_acc_rel',
-                     'train_acc_norel', 'test_acc_rel', 'test_acc_norel'])
+        for epoch in range(1, args.epochs + 1):
+            train_acc_binary, train_acc_unary = train(
+                epoch, rel_train, norel_train)
+            test_acc_binary, test_acc_unary = test(
+                epoch, rel_test, norel_test)
 
-    print(f"Training {args.model} {f'({args.relation_type})' if args.model == 'RN' else ''} model...")
+            csv_writer.writerow([epoch, train_acc_binary,
+                            train_acc_unary, test_acc_binary, test_acc_unary])
+        model.save_model(epoch)
 
-    for epoch in range(1, args.epochs + 1):
-        train_acc_binary, train_acc_unary = train(
-            epoch, rel_train, norel_train)
-        test_acc_binary, test_acc_unary = test(
-            epoch, rel_test, norel_test)
-
-        csv_writer.writerow([epoch, train_acc_binary,
-                         train_acc_unary, test_acc_binary, test_acc_unary])
-    model.save_model(epoch)
-
-# remove sort-of-clevr dataset
-data_dir = "./data/sort-of-clevr.pickle"
-if os.path.isfile(data_dir):
-    os.remove(data_dir)
-else:    ## Show an error ##
-    print("Error: %s file not found" % data_dir)
+    # remove sort-of-clevr dataset
+    data_dir = "./data/sort-of-clevr.pickle"
+    if os.path.isfile(data_dir):
+        os.remove(data_dir)
+    else:    ## Show an error ##
+        print("Error: %s file not found" % data_dir)
