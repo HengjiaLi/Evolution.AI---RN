@@ -89,21 +89,21 @@ def build_dataset():#for each image
         question[subtype+sub_q_type_idx] = 1
         norel_questions.append(question)
         """Answer : [yes, no, rectangle, circle, r, g, b, o, k, y]"""
-        if subtype == 0:
+        if subtype == 0:#8
             """query shape->rectangle/circle"""
             if objects[color][2] == 'r':
                 answer = 2
             else:
                 answer = 3
 
-        elif subtype == 1:
+        elif subtype == 1:#9
             """query horizontal position->yes/no"""
             if objects[color][1][0] < img_size / 2:
                 answer = 0
             else:
                 answer = 1
 
-        elif subtype == 2:
+        elif subtype == 2:#10
             """query vertical position->yes/no"""
             if objects[color][1][1] < img_size / 2:
                 answer = 0
@@ -121,7 +121,7 @@ def build_dataset():#for each image
         question[subtype+sub_q_type_idx] = 1
         binary_questions.append(question)
 
-        if subtype == 0:
+        if subtype == 2:#10
             """closest-to->rectangle/circle"""
             my_obj = objects[color][1]
             dist_list = [((my_obj - obj[1]) ** 2).sum() for obj in objects]
@@ -132,7 +132,7 @@ def build_dataset():#for each image
             else:
                 answer = 3
                 
-        elif subtype == 1:
+        elif subtype == 1:#9
             """furthest-from->rectangle/circle"""
             my_obj = objects[color][1]
             dist_list = [((my_obj - obj[1]) ** 2).sum() for obj in objects]
@@ -142,7 +142,7 @@ def build_dataset():#for each image
             else:
                 answer = 3
 
-        elif subtype == 2:
+        elif subtype == 0:#8
             """count->1~6"""
             my_obj = objects[color][2]
             count = -1
