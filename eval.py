@@ -7,20 +7,22 @@ import random
 from main import load_data,cvt_data_axis
 from model_simnoPE import RN
 
-rel_train, rel_test, norel_train, norel_test = load_data()
 # SPLIT DATASET
-norel_pos = []#non-relational questions that require positional info
-norel_nopos = []#non-relational questions that does not require positional info
-for i in range(len(norel_test)):
-    if norel_test[i][1][9]==1 or norel_test[i][1][10]==1:
-        norel_pos.append(norel_test[i])
-    else:
-        norel_nopos.append(norel_test[i])
-random.shuffle(norel_pos)
-random.shuffle(norel_nopos)
-norel_pos = cvt_data_axis(norel_pos)
-norel_nopos = cvt_data_axis(norel_nopos)
-# LOAD MODEL
+def split_data(data):
+    pos = []#questions that require positional info
+    nopos = []#questions that does not require positional info
+    for i in range(len(data)):
+        if data[i][1][9]==1 or data[i][1][10]==1:
+            pos.append(data[i])
+        else:
+            nopos.append(data[i])
+    random.shuffle(pos)
+    random.shuffle(nopos)
+    pos = cvt_data_axis(pos)
+    nopos = cvt_data_axis(nopos)
+    return pos,nopos
+
+# Model setup
 parser = argparse.ArgumentParser(description='PyTorch Relational-Network sort-of-CLVR Example')
 parser.add_argument('--model', type=str, choices=['RN', 'CNN_MLP'], default='RN', 
                     help='resume from model stored')
@@ -49,9 +51,17 @@ if torch.cuda.is_available():
 else:
     model.load_state_dict(torch.load(path,map_location=torch.device('cpu')))
 
+
+# TEST
+rel_train, rel_test, norel_train, norel_test = load_data()
+norel_pos,norel_nopos = split_data(norel_test)
 acc,l =model.test_(torch.FloatTensor(norel_pos[0]), torch.FloatTensor(norel_pos[1]), torch.LongTensor(norel_pos[2]))
 print('\n Test set: Unary accuracy (need pos info): {:.0f}%\n'.format(acc))
-
 acc,l =model.test_(torch.FloatTensor(norel_nopos[0]), torch.FloatTensor(norel_nopos[1]), torch.LongTensor(norel_nopos[2]))
 print('\n Test set: Unary accuracy (need no pos info): {:.0f}%\n'.format(acc))
 
+rel_pos,rel_nopos = split_data(rel_test)
+acc,l =model.test_(torch.FloatTensor(rel_pos[0]), torch.FloatTensor(rel_pos[1]), torch.LongTensor(rel_pos[2]))
+print('\n Test set: Binary accuracy (need pos info): {:.0f}%\n'.format(acc))
+acc,l =model.test_(torch.FloatTensor(rel_nopos[0]), torch.FloatTensor(rel_nopos[1]), torch.LongTensor(rel_nopos[2]))
+print('\n Test set: Binary accuracy (need no pos info): {:.0f}%\n'.format(acc))
