@@ -6,7 +6,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.autograd import Variable
 import argparse
 import random
-from main import load_data,cvt_data_axis
+from main import load_data,cvt_data_axis,tensor_data
 from model_simnoPE import RN
 
 # SPLIT DATASET
