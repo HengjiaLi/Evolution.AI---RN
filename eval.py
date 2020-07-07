@@ -7,7 +7,7 @@ from torch.autograd import Variable
 import argparse
 import random
 from main import load_data,cvt_data_axis
-from model_simnoPE import RN
+from model_sim import RN
 
 # SPLIT DATASET
 def split_data(data,type_):
@@ -56,8 +56,8 @@ args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 model = RN(args)
 
-path="./All Model/simple_RNnoPE.pth"
-#path="./All Model/simple_RN.pth"
+#path="./All Model/simple_RNnoPE.pth"
+path="./All Model/simple_RN.pth"
 if torch.cuda.is_available():
     # os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
