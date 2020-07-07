@@ -68,7 +68,7 @@ else:
 # TEST
 rel_train, rel_test, norel_train, norel_test = load_data()
 norel_pos,norel_nopos = split_data(norel_test,'norel')
-img = torch.FloatTensor(norel_pos[0]
+img = torch.FloatTensor(norel_pos[0])
 qst =  torch.FloatTensor(norel_pos[1])
 ans = torch.LongTensor(norel_pos[2])
 if args.cuda:
