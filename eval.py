@@ -87,7 +87,7 @@ def tensor_data(data, i):
     input_img.data.resize_(img.size()).copy_(img)
     input_qst.data.resize_(qst.size()).copy_(qst)
     label.data.resize_(ans.size()).copy_(ans)
-    
+
 def test(data):
     model.eval()
     accuracy = []
@@ -102,10 +102,10 @@ rel_train, rel_test, norel_train, norel_test = load_data()
 norel_pos,norel_nopos = split_data(norel_test,'norel')
 acc = test(norel_pos)
 print('\n Test set: Unary accuracy (need pos info): {:.0f}%\n'.format(acc))
-# acc,l =model.test_(torch.FloatTensor(norel_nopos[0]), torch.FloatTensor(norel_nopos[1]), torch.LongTensor(norel_nopos[2]))
-# print('\n Test set: Unary accuracy (need no pos info): {:.0f}%\n'.format(acc))
-# rel_pos,rel_nopos = split_data(rel_test,'rel')
-# acc,l =model.test_(torch.FloatTensor(rel_pos[0]), torch.FloatTensor(rel_pos[1]), torch.LongTensor(rel_pos[2]))
-# print('\n Test set: Binary accuracy (need pos info): {:.0f}%\n'.format(acc))
-# acc,l =model.test_(torch.FloatTensor(rel_nopos[0]), torch.FloatTensor(rel_nopos[1]), torch.LongTensor(rel_nopos[2]))
-# print('\n Test set: Binary accuracy (need no pos info): {:.0f}%\n'.format(acc))
+acc = test(norel_nopos)
+print('\n Test set: Unary accuracy (need no pos info): {:.0f}%\n'.format(acc))
+rel_pos,rel_nopos = split_data(rel_test,'rel')
+acc = test(rel_pos)
+print('\n Test set: Binary accuracy (need pos info): {:.0f}%\n'.format(acc))
+acc = test(rel_nopos)
+print('\n Test set: Binary accuracy (need no pos info): {:.0f}%\n'.format(acc))
