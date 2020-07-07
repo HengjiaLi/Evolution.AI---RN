@@ -60,7 +60,7 @@ if torch.cuda.is_available():
     # os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     device = torch.device("cuda")
-    model.load_state_dict(torch.load(path))
+    model.load_state_dict(torch.load(path, map_location="cuda:1"))
     model.to(device)
 else:
     print('useing CPU')
