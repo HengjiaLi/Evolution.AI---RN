@@ -6,7 +6,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.autograd import Variable
 import argparse
 import random
-from main import load_data,cvt_data_axis,tensor_data
+from main import load_data,cvt_data_axis
 from model_simnoPE import RN
 
 # SPLIT DATASET
@@ -78,6 +78,16 @@ if args.cuda:
 input_img = Variable(input_img)
 input_qst = Variable(input_qst)
 label = Variable(label)
+
+def tensor_data(data, i):
+    img = torch.from_numpy(np.asarray(data[0][bs*i:bs*(i+1)]))
+    qst = torch.from_numpy(np.asarray(data[1][bs*i:bs*(i+1)]))
+    ans = torch.from_numpy(np.asarray(data[2][bs*i:bs*(i+1)]))
+
+    input_img.data.resize_(img.size()).copy_(img)
+    input_qst.data.resize_(qst.size()).copy_(qst)
+    label.data.resize_(ans.size()).copy_(ans)
+    
 def test(data):
     model.eval()
     accuracy = []
