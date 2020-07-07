@@ -80,7 +80,7 @@ input_qst = Variable(input_qst)
 label = Variable(label)
 def test(data):
     model.eval()
-    accuracy
+    accuracy = []
     for batch_idx in range(len(data[0]) // bs):
         tensor_data(data, batch_idx)
         acc_bin, l = model.test_(input_img, input_qst, label)
