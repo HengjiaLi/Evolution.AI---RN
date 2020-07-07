@@ -2,6 +2,8 @@ import os
 import pickle
 import numpy as np
 import torch
+from torch.utils.tensorboard import SummaryWriter
+from torch.autograd import Variable
 import argparse
 import random
 from main import load_data,cvt_data_axis
@@ -63,35 +65,37 @@ if torch.cuda.is_available():
 else:
     print('useing CPU')
     model.load_state_dict(torch.load(path,map_location=torch.device('cpu')))
-def input_gen(data):
-    img = torch.FloatTensor(data[0])
-    qst =  torch.FloatTensor(data[1])
-    ans = torch.LongTensor(data[2])
-    if args.cuda:
-        img = img.cuda()
-        qst = qst.cuda()
-        ans = ans.cuda()
-    return img,qst,ans
 
+bs = args.batch_size
+input_img = torch.FloatTensor(bs, 3, 75, 75)
+input_qst = torch.FloatTensor(bs, 11)
+label = torch.LongTensor(bs)
+if args.cuda:
+    model.cuda()
+    input_img = input_img.cuda()
+    input_qst = input_qst.cuda()
+    label = label.cuda()
+input_img = Variable(input_img)
+input_qst = Variable(input_qst)
+label = Variable(label)
+def test(data):
+    model.eval()
+    accuracy
+    for batch_idx in range(len(data[0]) // bs):
+        tensor_data(data, batch_idx)
+        acc_bin, l = model.test_(input_img, input_qst, label)
+        accuracy.append(acc_bin.item())
+    acc = sum(accuracy) / len(accuracy)
+    return acc
 # TEST
 rel_train, rel_test, norel_train, norel_test = load_data()
 norel_pos,norel_nopos = split_data(norel_test,'norel')
-
-model.eval()
-img,qst,ans = input_gen(norel_pos)
-acc,l =model.test_(img,qst,ans)
+acc = test(norel_pos)
 print('\n Test set: Unary accuracy (need pos info): {:.0f}%\n'.format(acc))
-
-img,qst,ans = input_gen(norel_nopos)
-acc,l =model.test_(img,qst,ans)
-print('\n Test set: Unary accuracy (need no pos info): {:.0f}%\n'.format(acc))
-
-
-rel_pos,rel_nopos = split_data(rel_test,'rel')
-img,qst,ans = input_gen(rel_pos)
-acc,l =model.test_(img,qst,ans)
-print('\n Test set: Binary accuracy (need pos info): {:.0f}%\n'.format(acc))
-img,qst,ans = input_gen(rel_nopos)
-acc,l =model.test_(img,qst,ans)
-print('\n Test set: Binary accuracy (need no pos info): {:.0f}%\n'.format(acc))
-
+# acc,l =model.test_(torch.FloatTensor(norel_nopos[0]), torch.FloatTensor(norel_nopos[1]), torch.LongTensor(norel_nopos[2]))
+# print('\n Test set: Unary accuracy (need no pos info): {:.0f}%\n'.format(acc))
+# rel_pos,rel_nopos = split_data(rel_test,'rel')
+# acc,l =model.test_(torch.FloatTensor(rel_pos[0]), torch.FloatTensor(rel_pos[1]), torch.LongTensor(rel_pos[2]))
+# print('\n Test set: Binary accuracy (need pos info): {:.0f}%\n'.format(acc))
+# acc,l =model.test_(torch.FloatTensor(rel_nopos[0]), torch.FloatTensor(rel_nopos[1]), torch.LongTensor(rel_nopos[2]))
+# print('\n Test set: Binary accuracy (need no pos info): {:.0f}%\n'.format(acc))
