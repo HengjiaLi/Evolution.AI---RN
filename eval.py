@@ -59,25 +59,32 @@ path="./All Model/simple_RN.pth"
 if torch.cuda.is_available():
     # os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-    device = torch.device("cuda")
-    model.load_state_dict(torch.load(path, map_location="cuda:1"))
-    model.to(device)
+    model.load_state_dict(torch.load(path))
 else:
     print('useing CPU')
     model.load_state_dict(torch.load(path,map_location=torch.device('cpu')))
-model.eval()
+
 
 # TEST
 rel_train, rel_test, norel_train, norel_test = load_data()
 norel_pos,norel_nopos = split_data(norel_test,'norel')
-acc,l =model.test_(torch.FloatTensor(norel_pos[0]), torch.FloatTensor(norel_pos[1]), torch.LongTensor(norel_pos[2]))
+img = torch.FloatTensor(norel_pos[0]
+qst =  torch.FloatTensor(norel_pos[1])
+ans = torch.LongTensor(norel_pos[2])
+if args.cuda:
+    model.cuda()
+    img = img.cuda()
+    qst = qst.cuda()
+    ans = ans.cuda()
+model.eval()
+acc,l =model.test_(img,qst,ans)
 print('\n Test set: Unary accuracy (need pos info): {:.0f}%\n'.format(acc))
-acc,l =model.test_(torch.FloatTensor(norel_nopos[0]), torch.FloatTensor(norel_nopos[1]), torch.LongTensor(norel_nopos[2]))
-print('\n Test set: Unary accuracy (need no pos info): {:.0f}%\n'.format(acc))
+# acc,l =model.test_(torch.FloatTensor(norel_nopos[0]), torch.FloatTensor(norel_nopos[1]), torch.LongTensor(norel_nopos[2]))
+# print('\n Test set: Unary accuracy (need no pos info): {:.0f}%\n'.format(acc))
 
-rel_pos,rel_nopos = split_data(rel_test,'rel')
-acc,l =model.test_(torch.FloatTensor(rel_pos[0]), torch.FloatTensor(rel_pos[1]), torch.LongTensor(rel_pos[2]))
-print('\n Test set: Binary accuracy (need pos info): {:.0f}%\n'.format(acc))
-acc,l =model.test_(torch.FloatTensor(rel_nopos[0]), torch.FloatTensor(rel_nopos[1]), torch.LongTensor(rel_nopos[2]))
-print('\n Test set: Binary accuracy (need no pos info): {:.0f}%\n'.format(acc))
+# rel_pos,rel_nopos = split_data(rel_test,'rel')
+# acc,l =model.test_(torch.FloatTensor(rel_pos[0]), torch.FloatTensor(rel_pos[1]), torch.LongTensor(rel_pos[2]))
+# print('\n Test set: Binary accuracy (need pos info): {:.0f}%\n'.format(acc))
+# acc,l =model.test_(torch.FloatTensor(rel_nopos[0]), torch.FloatTensor(rel_nopos[1]), torch.LongTensor(rel_nopos[2]))
+# print('\n Test set: Binary accuracy (need no pos info): {:.0f}%\n'.format(acc))
 
