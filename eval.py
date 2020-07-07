@@ -67,15 +67,18 @@ else:
 # TEST
 rel_train, rel_test, norel_train, norel_test = load_data()
 norel_pos,norel_nopos = split_data(norel_test,'norel')
-img = torch.FloatTensor(norel_pos[0])
-qst =  torch.FloatTensor(norel_pos[1])
-ans = torch.LongTensor(norel_pos[2])
-if args.cuda:
-    model.cuda()
-    img = img.cuda()
-    qst = qst.cuda()
-    ans = ans.cuda()
+def input_gen(data)
+    img = torch.FloatTensor(data[0])
+    qst =  torch.FloatTensor(data[1])
+    ans = torch.LongTensor(data[2])
+    if args.cuda:
+        model.cuda()
+        img = img.cuda()
+        qst = qst.cuda()
+        ans = ans.cuda()
+    return img,qst,ans
 model.eval()
+img,qst,ans = input_gen(norel_pos)
 acc,l =model.test_(img,qst,ans)
 print('\n Test set: Unary accuracy (need pos info): {:.0f}%\n'.format(acc))
 # acc,l =model.test_(torch.FloatTensor(norel_nopos[0]), torch.FloatTensor(norel_nopos[1]), torch.LongTensor(norel_nopos[2]))
