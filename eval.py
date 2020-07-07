@@ -59,7 +59,9 @@ path="./All Model/simple_RN.pth"
 if torch.cuda.is_available():
     # os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    device = torch.device("cuda")
     model.load_state_dict(torch.load(path))
+    model.to(device)
 else:
     print('useing CPU')
     model.load_state_dict(torch.load(path,map_location=torch.device('cpu')))
