@@ -63,12 +63,11 @@ if torch.cuda.is_available():
 else:
     print('useing CPU')
     model.load_state_dict(torch.load(path,map_location=torch.device('cpu')))
-def input_gen(data)
+def input_gen(data):
     img = torch.FloatTensor(data[0])
     qst =  torch.FloatTensor(data[1])
     ans = torch.LongTensor(data[2])
     if args.cuda:
-        model.cuda()
         img = img.cuda()
         qst = qst.cuda()
         ans = ans.cuda()
