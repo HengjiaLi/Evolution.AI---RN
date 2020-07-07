@@ -109,13 +109,13 @@ class RN(BasicModel):
         def cvt_coord(i):
             return [(i/5-2)/2., (i%5-2)/2.]
         
-        self.coord_tensor = torch.FloatTensor(args.batch_size, 25, 2)
+        self.coord_tensor = torch.FloatTensor(25, 2)
         if args.cuda:
             self.coord_tensor = self.coord_tensor.cuda()
         self.coord_tensor = Variable(self.coord_tensor)
-        np_coord_tensor = np.zeros((args.batch_size, 25, 2))
-        for i in range(25):
-            np_coord_tensor[:,i,:] = np.array( cvt_coord(i) )
+        np_coord_tensor = np.zeros((25, 2))#25x2
+        for i in range(25):#5x5 feature map
+            np_coord_tensor[i,:] = np.array(cvt_coord(i))
         self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
 
 
@@ -128,13 +128,15 @@ class RN(BasicModel):
         x = self.conv(img) ## x = (64 x 24 x 5 x 5)
         
         """g"""
-        mb = x.size()[0]
+        mb = x.size()[0]#mini batch size
         n_channels = x.size()[1]
         d = x.size()[2]
         # x_flat = (64 x 25 x 24)
         x_flat = x.view(mb,n_channels,d*d).permute(0,2,1)
         
         # add coordinates
+        self.coord_tensor = self.coord_tensor.unsqueeze(0)
+        self.coord_tensor = self.coord_tensor.repeat(mb,1,1)
         x_flat = torch.cat([x_flat, self.coord_tensor],2)
         
         if self.relation_type != 'ternary':
