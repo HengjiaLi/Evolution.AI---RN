@@ -6,7 +6,11 @@ import argparse
 import random
 from main import load_data,cvt_data_axis,tensor_data
 from model_sim import RN
-
+os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+import torch
+from torch.utils.tensorboard import SummaryWriter
+from torch.autograd import Variable
 # SPLIT DATASET
 def split_data(data,type_):
     pos = []#questions that require positional info
