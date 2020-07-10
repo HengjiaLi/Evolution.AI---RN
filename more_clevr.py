@@ -90,21 +90,21 @@ def build_dataset():#for each image
         question[subtype+sub_q_type_idx] = 1
         norel_questions.append(question)
         """Answer : [yes, no, rectangle, circle, r, g, b, o, k, y]"""
-        if subtype == 0:#8
+        if subtype == 0:#14
             """query shape->rectangle/circle"""
             if objects[color][2] == 'r':
                 answer = 2
             else:
                 answer = 3
 
-        elif subtype == 1:#9
+        elif subtype == 1:#15
             """query horizontal position->yes/no"""
             if objects[color][1][0] < img_size / 2:
                 answer = 0
             else:
                 answer = 1
 
-        elif subtype == 2:#10
+        elif subtype == 2:#16
             """query vertical position->yes/no"""
             if objects[color][1][1] < img_size / 2:
                 answer = 0
