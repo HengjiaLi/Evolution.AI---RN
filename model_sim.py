@@ -89,7 +89,7 @@ class RN(BasicModel):
         self.relation_type = args.relation_type
         
         ##(number of filters per object+coordinate of object)*2+question vector
-        self.g_fc1 = nn.Linear((24+2)*2+11, 256)
+        self.g_fc1 = nn.Linear((24+2)*2+19, 256)
 
         self.g_fc2 = nn.Linear(256, 256)
         self.g_fc3 = nn.Linear(256, 256)
@@ -154,7 +154,7 @@ class RN(BasicModel):
             x_full = torch.cat([x_i,x_j],3) # (64x25x25x2*26+11)
         
             # reshape for passing through network
-            x_ = x_full.view(mb * (d * d) * (d * d), 63)  # (64*25*25x(2*26+11)) = (40.000, 63)
+            x_ = x_full.view(mb * (d * d) * (d * d), 71)  # (64*25*25x(2*26+11)) = (40.000, 63)
             
         x_ = self.g_fc1(x_)
         x_ = F.relu(x_)
@@ -182,7 +182,7 @@ class CNN_MLP(BasicModel):
         super(CNN_MLP, self).__init__(args, 'CNNMLP')
 
         self.conv  = ConvInputModel()
-        self.fc1   = nn.Linear(5*5*24 + 11, 256)  # question concatenated to all
+        self.fc1   = nn.Linear(5*5*24 + 19, 256)  # question concatenated to all
         self.fcout = FCOutputModel()
 
         self.optimizer = optim.Adam(self.parameters(), lr=args.lr)
