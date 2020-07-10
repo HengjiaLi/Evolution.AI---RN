@@ -21,10 +21,10 @@ np.random.seed(args.seed)
 train_size = 9800
 test_size = 200
 img_size = 75
-size = 5
-question_size = 11  ## (6 for one-hot vector of color), 2 for question type, 3 for question subtype
-q_type_idx = 6
-sub_q_type_idx = 8
+size = 5 #radius of object
+question_size = 19 ## (6 for one-hot vector of color), 2 for question type, 5 for question subtype
+q_type_idx = 12
+sub_q_type_idx = 14
 """Answer : [yes, no, rectangle, circle, r, g, b, o, k, y]"""
 
 nb_questions = 15
@@ -118,13 +118,12 @@ def build_dataset():#for each image
         color = random.randint(0,5)
         question[color] = 1
         question[q_type_idx+1] = 1
-        subtype = random.randint(0,2)
+        subtype = random.randint(0,4)
         question[subtype+sub_q_type_idx] = 1
-        binary_questions.append(question)
-
-        if subtype == 0:#8
+        
+        if subtype == 0:#14
             """closest-to->rectangle/circle"""
-            my_obj = objects[color][1]
+            my_obj = objects[color][1]# coordinate of object's centre
             dist_list = [((my_obj - obj[1]) ** 2).sum() for obj in objects]
             dist_list[dist_list.index(0)] = 999
             closest = dist_list.index(min(dist_list))
@@ -133,7 +132,7 @@ def build_dataset():#for each image
             else:
                 answer = 3
                 
-        elif subtype == 1:#9
+        elif subtype == 1:#15
             """furthest-from->rectangle/circle"""
             my_obj = objects[color][1]
             dist_list = [((my_obj - obj[1]) ** 2).sum() for obj in objects]
@@ -143,7 +142,7 @@ def build_dataset():#for each image
             else:
                 answer = 3
 
-        elif subtype == 2:#10
+        elif subtype == 2:#16
             """count->1~6"""
             my_obj = objects[color][2]
             count = -1
@@ -151,7 +150,29 @@ def build_dataset():#for each image
                 if obj[2] == my_obj:
                     count +=1 
             answer = count+4
+        elif subtype == 3:#17
+            ''' if color2 is on the left to the current object --->yes or no'''
+            color2 = random.randint(0,5)#select second color
+            question[color2+6] = 1
+            obj_1 = objects[color][1]#reference object
+            obj_2 = objects[color2][1]
+            if obj_1[0]>obj_2[0]:
+                answer = 0
+            else:
+                answer = 1
+      
+        elif subtype == 4:#18
+            ''' if color2 is above the current object --->yes or no'''
+            color2 = random.randint(0,5)#select second color
+            question[color2+6] = 1
+            obj_1 = objects[color][1]#reference object
+            obj_2 = objects[color2][1]
+            if obj_1[1]<obj_2[1]:
+                answer = 0
+            else:
+                answer = 1
 
+        binary_questions.append(question)
         binary_answers.append(answer)
     binary_relations = (binary_questions, binary_answers)
     norelations = (norel_questions, norel_answers)
@@ -170,9 +191,8 @@ train_datasets = [build_dataset() for _ in range(train_size)]
 #img_count = 0
 #cv2.imwrite(os.path.join(dirs,'{}.png'.format(img_count)), cv2.resize(train_datasets[0][0]*255, (512,512)))
 
-
 print('saving datasets...')
-filename = os.path.join(dirs,'sort-of-clevr.pickle')
+filename = os.path.join(dirs,'more-clevr.pickle')
 with  open(filename, 'wb') as f:
     pickle.dump((train_datasets, test_datasets), f)
 print('datasets saved at {}'.format(filename))
