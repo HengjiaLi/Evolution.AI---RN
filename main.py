@@ -19,7 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.autograd import Variable
 
 from model_simnoPE import RN, CNN_MLP
-
+import more_clevr.py
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch Relational-Network sort-of-CLVR Example')
@@ -199,7 +199,7 @@ def test(epoch,rel, norel):
 def load_data():
     print('loading data...')
     dirs = './data'
-    filename = os.path.join(dirs,'sort-of-clevr.pickle')
+    filename = os.path.join(dirs,'more-clevr.pickle')
     with open(filename, 'rb') as f:
       train_datasets, test_datasets = pickle.load(f)
     rel_train = []
@@ -256,8 +256,8 @@ if __name__ == "__main__":
                             train_acc_unary, test_acc_binary, test_acc_unary])
         model.save_model(epoch)
 
-    # remove sort-of-clevr dataset
-    data_dir = "./data/sort-of-clevr.pickle"
+    # remove dataset
+    data_dir = "./data/more-clevr.pickle"
     if os.path.isfile(data_dir):
         os.remove(data_dir)
     else:    ## Show an error ##
