@@ -18,7 +18,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch.autograd import Variable
 
-from model_simnoPE import RN, CNN_MLP
+from model_sim import RN, CNN_MLP
 import more_clevr
 
 # Training settings
