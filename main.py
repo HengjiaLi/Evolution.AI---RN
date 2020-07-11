@@ -19,7 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.autograd import Variable
 
 from model_sim import RN, CNN_MLP
-import more_clevr
+
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch Relational-Network sort-of-CLVR Example')

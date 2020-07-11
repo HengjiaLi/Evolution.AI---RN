@@ -21,23 +21,24 @@ def split_data(data):
     Q8 = []#if color2 is above the current object --->yes or no
     random.shuffle(data)
     for ind,sample in enumerate(data):
-        if sample[12] == 1: #non-rel questions
-            if sample[14] == 1:
+        Q = sample[1]
+        if Q[12] == 1: #non-rel questions
+            if Q[14] == 1:
                 Q1.append(sample)
-            elif sample[15] == 1:
+            elif Q[15] == 1:
                 Q2.append(sample)
-            elif sample[16] == 1:
+            elif Q[16] == 1:
                 Q3.append(sample)
-        elif sample[13] == 1:#rel questions
-            if sample[14] == 1:
+        elif Q[13] == 1:#rel questions
+            if Q[14] == 1:
                 Q4.append(sample)
-            elif sample[15] == 1:
+            elif Q[15] == 1:
                 Q5.append(sample)
-            elif sample[16] == 1:
+            elif Q[16] == 1:
                 Q6.append(sample)
-            elif sample[17] == 1:
+            elif Q[17] == 1:
                 Q7.append(sample)
-            elif sample[18] == 1:
+            elif Q[18] == 1:
                 Q8.append(sample)
 
     Q1 = cvt_data_axis(Q1)
