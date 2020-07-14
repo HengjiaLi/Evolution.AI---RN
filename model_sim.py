@@ -107,7 +107,7 @@ class RN(BasicModel):
 
         # prepare coord tensor
         def cvt_coord(i):
-            return [(i/5-2)/2., (i%5-2)/2.]
+            return [(i//5-2)/2., (i%5-2)/2.]
         
         self.coord_tensor = torch.FloatTensor(args.batch_size, 25, 2)
         if args.cuda:
