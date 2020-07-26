@@ -98,15 +98,15 @@ def build_dataset():#for each image
                 answer = 3
 
         elif subtype == 1:#15
-            """query horizontal position->yes/no"""
-            if objects[color][1][0] < img_size / 2:
+            """query vertical position->yes/no"""
+            if objects[color][1][0] < img_size / 2:#check row ind
                 answer = 0
             else:
                 answer = 1
 
         elif subtype == 2:#16
-            """query vertical position->yes/no"""
-            if objects[color][1][1] < img_size / 2:
+            """query horizontal position->yes/no"""
+            if objects[color][1][1] < img_size / 2:#check col ind
                 answer = 0
             else:
                 answer = 1
@@ -151,23 +151,24 @@ def build_dataset():#for each image
                     count +=1 
             answer = count+4
         elif subtype == 3:#17
-            ''' if color2 is on the left to the current object --->yes or no'''
+            ''' if color2 is above the current object --->yes or no'''
+            
             color2 = random.randint(0,5)#select second color
             question[color2+6] = 1
             obj_1 = objects[color][1]#reference object
             obj_2 = objects[color2][1]
-            if obj_1[0]>obj_2[0]:
+            if obj_1[0]>obj_2[0]:#compare row ind
                 answer = 0
             else:
                 answer = 1
       
         elif subtype == 4:#18
-            ''' if color2 is above the current object --->yes or no'''
+            ''' if color2 is on the left to the current object --->yes or no'''
             color2 = random.randint(0,5)#select second color
             question[color2+6] = 1
             obj_1 = objects[color][1]#reference object
             obj_2 = objects[color2][1]
-            if obj_1[1]<obj_2[1]:
+            if obj_1[1]<obj_2[1]:#compare col ind
                 answer = 0
             else:
                 answer = 1

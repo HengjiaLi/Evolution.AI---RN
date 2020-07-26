@@ -12,7 +12,7 @@ import numpy as np
 import csv
 
 os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -256,9 +256,9 @@ if __name__ == "__main__":
                             train_acc_unary, test_acc_binary, test_acc_unary])
         model.save_model(epoch)
 
-    # remove dataset
-    data_dir = "./data/more-clevr.pickle"
-    if os.path.isfile(data_dir):
-        os.remove(data_dir)
-    else:    ## Show an error ##
-        print("Error: %s file not found" % data_dir)
+    # # remove dataset
+    # data_dir = "./data/more-clevr.pickle"
+    # if os.path.isfile(data_dir):
+    #     os.remove(data_dir)
+    # else:    ## Show an error ##
+    #     print("Error: %s file not found" % data_dir)

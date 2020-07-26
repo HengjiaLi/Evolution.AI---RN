@@ -83,13 +83,13 @@ class BasicModel(nn.Module):
 class RN(BasicModel):
     def __init__(self, args):
         super(RN, self).__init__(args, 'RN')
-        
+        print('Initialise Model 4D')
         self.conv = ConvInputModel()
         
         self.relation_type = args.relation_type
         
         ##(number of filters per object+coordinate of object)*2+question vector
-        self.g_fc1 = nn.Linear((24+2)*2+19, 256)
+        self.g_fc1 = nn.Linear((28)*2+19, 256)
 
         self.g_fc2 = nn.Linear(256, 256)
         self.g_fc3 = nn.Linear(256, 256)
@@ -97,28 +97,40 @@ class RN(BasicModel):
 
         self.f_fc1 = nn.Linear(256, 256)
 
-        self.coord_oi = torch.FloatTensor(args.batch_size, 2)
-        self.coord_oj = torch.FloatTensor(args.batch_size, 2)
-        if args.cuda:
-            self.coord_oi = self.coord_oi.cuda()
-            self.coord_oj = self.coord_oj.cuda()
-        self.coord_oi = Variable(self.coord_oi)
-        self.coord_oj = Variable(self.coord_oj)
+        # self.coord_oi = torch.FloatTensor(args.batch_size, 2)
+        # self.coord_oj = torch.FloatTensor(args.batch_size, 2)
+        # if args.cuda:
+        #     self.coord_oi = self.coord_oi.cuda()
+        #     self.coord_oj = self.coord_oj.cuda()
+        # self.coord_oi = Variable(self.coord_oi)
+        # self.coord_oj = Variable(self.coord_oj)
 
+        self.temperature = 10000
         # prepare coord tensor
+        self.feature_dim = 4
+        self.xy_dim = 2
         def cvt_coord(i):
-            #return [(i//5-2)/2., (i%5-2)/2.]
-            return [(i//5-2)/2.,np.random.rand()]
-        
-        self.coord_tensor = torch.FloatTensor(args.batch_size, 25, 2)
+            dim_t = np.arange(self.xy_dim)
+            dim_t = self.temperature**(2 * (dim_t // 2) / self.feature_dim )
+            x = i//5
+            y = i%5
+            x_pos = dim_t 
+            y_pos = dim_t.copy()
+            
+            x_pos[0:self.xy_dim:2] = np.sin(x/x_pos[0:self.xy_dim:2])
+            x_pos[1:self.xy_dim:2] = np.cos(x/x_pos[1:self.xy_dim:2])
+            y_pos[0:self.xy_dim:2] = np.sin(x/y_pos[0:self.xy_dim:2])
+            y_pos[1:self.xy_dim:2] = np.cos(x/y_pos[1:self.xy_dim:2])
+            pos = np.concatenate((x_pos,y_pos))
+            return pos
+        self.coord_tensor = torch.FloatTensor(args.batch_size, 25, self.feature_dim)
         if args.cuda:
             self.coord_tensor = self.coord_tensor.cuda()
         self.coord_tensor = Variable(self.coord_tensor)
-        np_coord_tensor = np.zeros((args.batch_size, 25, 2))#64x25x2
+        np_coord_tensor = np.zeros((args.batch_size, 25, self.feature_dim))#64x25x4
         for i in range(25):#5x5 feature map
             np_coord_tensor[:,i,:] = np.array( cvt_coord(i) )
         self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
-
 
         self.fcout = FCOutputModel()
         
@@ -126,7 +138,7 @@ class RN(BasicModel):
 
 
     def forward(self, img, qst):
-        x = self.conv(img) ## x = (64 x 24 x 5 x 5)
+        x = self.conv(img) ## x = (64 x 24 (num of feature maps) x 5 x 5)
         
         """g"""
         mb = x.size()[0]#mini batch
@@ -136,8 +148,8 @@ class RN(BasicModel):
         x_flat = x.view(mb,n_channels,d*d).permute(0,2,1)
         
         # add coordinates
-        x_flat = torch.cat([x_flat, self.coord_tensor],2)
-        
+        x_flat = torch.cat([x_flat, self.coord_tensor],2)#64x25x28
+        # x_flat =x_flat+self.coord_tensor
         if self.relation_type != 'ternary':
             # add question everywhere
             qst = torch.unsqueeze(qst, 1)
@@ -145,17 +157,17 @@ class RN(BasicModel):
             qst = torch.unsqueeze(qst, 2)
 
             # cast all pairs against each other
-            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x26+11)
-            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x26+11)
-            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x26+11)
+            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x28+11)
+            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x28+11)
+            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x28+11)
             x_j = torch.cat([x_j, qst], 3)
-            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x26+11)
+            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x28+11)
             
             # concatenate all together
-            x_full = torch.cat([x_i,x_j],3) # (64x25x25x2*26+11)
+            x_full = torch.cat([x_i,x_j],3) # (64x25x25x2*28+11)
         
             # reshape for passing through network
-            x_ = x_full.view(mb * (d * d) * (d * d), 71)  # (64*25*25x(2*26+11)) = (40.000, 63)
+            x_ = x_full.view(mb * (d * d) * (d * d), 75)  # (64*25*25x(2*28+19)) = (40.000, 75)
             
         x_ = self.g_fc1(x_)
         x_ = F.relu(x_)

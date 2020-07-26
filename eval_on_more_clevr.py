@@ -12,13 +12,13 @@ from model_sim import RN
 # SPLIT DATASET
 def split_data(data):
     Q1 = []#shape of object
-    Q2 = []#query horizontal position->yes/no
-    Q3 = []#query vertical position->yes/no
+    Q2 = []#query vertical position->yes/no
+    Q3 = []#query horizontal position->yes/no
     Q4 = []#closest-to->rectangle/circle
     Q5 = []#furthest-from->rectangle/circle
     Q6 = []#count same color->1~6
-    Q7 = []#if color2 is on the left to the current object --->yes or no
-    Q8 = []#if color2 is above the current object --->yes or no
+    Q7 = []#if color2 is above the current object --->yes or no
+    Q8 = []#if color2 is on the left to the current object --->yes or no
     random.shuffle(data)
     for ind,sample in enumerate(data):
         Q = sample[1]
@@ -76,7 +76,7 @@ args.cuda = not args.no_cuda and torch.cuda.is_available()
 model = RN(args)
 
 #path="./All Model/simple_RNnoPE.pth"
-path="./All Model/more-clevr model/sim1.pth"
+path="./model/epoch_RN_20.pth"
 if torch.cuda.is_available():
     # os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -87,7 +87,7 @@ else:
 
 bs = args.batch_size
 input_img = torch.FloatTensor(bs, 3, 75, 75)
-input_qst = torch.FloatTensor(bs, 11)
+input_qst = torch.FloatTensor(bs, 19)
 label = torch.LongTensor(bs)
 if args.cuda:
     model.cuda()
@@ -122,9 +122,9 @@ Q1,Q2,Q3,_,_,_,_,_ = split_data(norel_test)
 acc = test(Q1)
 print('\n Test set: Unary accuracy (shape of object): {:.0f}%\n'.format(acc))
 acc = test(Q2)
-print('\n Test set: Unary accuracy (query horizontal position): {:.0f}%\n'.format(acc))
+print('\n Test set: Unary accuracy (query vertical position): {:.0f}%\n'.format(acc))
 acc = test(Q3)
-print('\n Test set: Unary accuracy (query vertical position->yes/no): {:.0f}%\n'.format(acc))
+print('\n Test set: Unary accuracy (query horizontal position->yes/no): {:.0f}%\n'.format(acc))
 
 _,_,_,Q4,Q5,Q6,Q7,Q8 = split_data(rel_test)
 acc = test(Q4)
@@ -134,6 +134,6 @@ print('\n Test set: Binary accuracy (furthest-to): {:.0f}%\n'.format(acc))
 acc = test(Q6)
 print('\n Test set: Binary accuracy (count same color): {:.0f}%\n'.format(acc))
 acc = test(Q7)
-print('\n Test set: Binary accuracy (left to object): {:.0f}%\n'.format(acc))
-acc = test(Q8)
 print('\n Test set: Binary accuracy (above object): {:.0f}%\n'.format(acc))
+acc = test(Q8)
+print('\n Test set: Binary accuracy (left to object): {:.0f}%\n'.format(acc))
