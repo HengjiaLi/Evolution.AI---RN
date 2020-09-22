@@ -18,22 +18,25 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch.autograd import Variable
 
-from model_sim import RN, CNN_MLP
+from model_sin import RN, CNN_MLP
+from matplotlib import pyplot as plt
 
+# import EarlyStopping
+from pytorchtools import EarlyStopping
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch Relational-Network sort-of-CLVR Example')
 parser.add_argument('--model', type=str, choices=['RN', 'CNN_MLP'], default='RN', 
                     help='resume from model stored')
-parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+parser.add_argument('--batch-size', type=int, default=50, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=20, metavar='N',
-                    help='number of epochs to train (default: 20)')
+parser.add_argument('--epochs', type=int, default=50, metavar='N',
+                    help='number of epochs to train (default: 50)')
 parser.add_argument('--lr', type=float, default=0.0001, metavar='LR',
                     help='learning rate (default: 0.0001)')
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='disables CUDA training')
-parser.add_argument('--seed', type=int, default=1, metavar='S',
+parser.add_argument('--seed', type=int, default=2020, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
@@ -147,9 +150,66 @@ def train(epoch,rel, norel):
     }, epoch)
 
     # return average accuracy
-    return avg_acc_binary, avg_acc_unary
+    return avg_acc_binary, avg_acc_unary,avg_loss_binary,avg_loss_unary
 
 def test(epoch,rel, norel):
+    model.eval()
+    if not len(rel[0]) == len(norel[0]):
+        print('Not equal length for relation dataset and non-relation dataset.')
+        return
+    random.shuffle(rel)
+    random.shuffle(norel)
+    rel = cvt_data_axis(rel)
+    norel = cvt_data_axis(norel)
+
+    accuracy_rels = []
+    accuracy_norels = []
+
+    loss_binary = []
+    loss_unary = []
+    
+    #print(len(rel[0]))
+    for batch_idx in range(len(rel[0]) // bs):
+
+        tensor_data(rel, batch_idx)
+        acc_bin, l_bin = model.test_(input_img, input_qst, label)
+        accuracy_rels.append(acc_bin.item())
+        loss_binary.append(l_bin.item())
+
+        tensor_data(norel, batch_idx)
+        acc_un, l_un = model.test_(input_img, input_qst, label)
+        accuracy_norels.append(acc_un.item())
+        loss_unary.append(l_un.item())
+        #print(l_bin.item())
+        #print(batch_idx)
+    
+    avg_acc_binary = sum(accuracy_rels) / len(accuracy_rels)
+    avg_acc_unary = sum(accuracy_norels) / len(accuracy_norels)
+    print('\n Test set: Binary accuracy: {:.0f}% | Unary accuracy: {:.0f}%\n'.format(avg_acc_binary, avg_acc_unary))
+
+    summary_writer.add_scalars('Accuracy/test', {
+        'binary': avg_acc_binary,
+        'unary': avg_acc_unary
+    }, epoch)
+
+    avg_loss_binary = sum(loss_binary) / len(loss_binary)
+    avg_loss_unary = sum(loss_unary) / len(loss_unary)
+
+    summary_writer.add_scalars('Loss/test', {
+        'binary': avg_loss_binary ,
+        'unary': avg_loss_unary
+    }, epoch)
+    
+    #sanity check
+    #
+    # if avg_loss_binary>1:
+    #     print(loss_binary)
+    #     model_save_name = 'overflow.pth'
+    #     path = F"/content/drive/My Drive/Evolution.AI---RN/{model_save_name}" 
+    #     torch.save(model.state_dict(), path)
+    return avg_acc_binary, avg_acc_unary,avg_loss_binary,avg_loss_unary
+
+def validate(epoch,rel, norel):
     model.eval()
     if not len(rel[0]) == len(norel[0]):
         print('Not equal length for relation dataset and non-relation dataset.')
@@ -175,25 +235,25 @@ def test(epoch,rel, norel):
         acc_un, l_un = model.test_(input_img, input_qst, label)
         accuracy_norels.append(acc_un.item())
         loss_unary.append(l_un.item())
+    
+    avg_acc_binary = sum(accuracy_rels) / len(accuracy_rels)
+    avg_acc_unary = sum(accuracy_norels) / len(accuracy_norels)
+    print('\n Validate set: Binary accuracy: {:.0f}% | Unary accuracy: {:.0f}%\n'.format(avg_acc_binary, avg_acc_unary))
 
-    accuracy_rel = sum(accuracy_rels) / len(accuracy_rels)
-    accuracy_norel = sum(accuracy_norels) / len(accuracy_norels)
-    print('\n Test set: Binary accuracy: {:.0f}% | Unary accuracy: {:.0f}%\n'.format(accuracy_rel, accuracy_norel))
-
-    summary_writer.add_scalars('Accuracy/test', {
-        'binary': accuracy_rel,
-        'unary': accuracy_norel
+    summary_writer.add_scalars('Accuracy/val', {
+        'binary': avg_acc_binary,
+        'unary': avg_acc_unary
     }, epoch)
 
-    loss_binary = sum(loss_binary) / len(loss_binary)
-    loss_unary = sum(loss_unary) / len(loss_unary)
+    avg_loss_binary = sum(loss_binary) / len(loss_binary)
+    avg_loss_unary = sum(loss_unary) / len(loss_unary)
 
-    summary_writer.add_scalars('Loss/test', {
-        'binary': loss_binary,
-        'unary': loss_unary
+    summary_writer.add_scalars('Loss/val', {
+        'binary': avg_loss_binary ,
+        'unary': avg_loss_unary
     }, epoch)
 
-    return accuracy_rel, accuracy_norel
+    return avg_acc_binary, avg_acc_unary,avg_loss_binary,avg_loss_unary
 
     
 def load_data():
@@ -201,11 +261,13 @@ def load_data():
     dirs = './data'
     filename = os.path.join(dirs,'more-clevr.pickle')
     with open(filename, 'rb') as f:
-      train_datasets, test_datasets = pickle.load(f)
+      train_datasets, test_datasets, val_datasets = pickle.load(f)
     rel_train = []
     rel_test = []
+    rel_val = []
     norel_train = []
     norel_test = []
+    norel_val = []
     print('processing data...')
 
     for img, relations, norelations in train_datasets:
@@ -221,11 +283,18 @@ def load_data():
             rel_test.append((img,qst,ans))
         for qst,ans in zip(norelations[0], norelations[1]):
             norel_test.append((img,qst,ans))
+            
+    for img, relations, norelations in val_datasets:
+        img = np.swapaxes(img, 0, 2)
+        for qst,ans in zip(relations[0], relations[1]):
+            rel_val.append((img,qst,ans))
+        for qst,ans in zip(norelations[0], norelations[1]):
+            norel_val.append((img,qst,ans))
     
-    return (rel_train, rel_test, norel_train, norel_test)
+    return (rel_train, rel_test,rel_val, norel_train, norel_test,norel_val)
     
 if __name__ == "__main__":
-    rel_train, rel_test, norel_train, norel_test = load_data()
+    rel_train, rel_test,rel_val,norel_train, norel_test,norel_val = load_data()
     try:
         os.makedirs(model_dirs)
     except:
@@ -238,24 +307,84 @@ if __name__ == "__main__":
             checkpoint = torch.load(filename)
             model.load_state_dict(checkpoint)
             print('==> loaded checkpoint {}'.format(filename))
-
+    #print(list(model.parameters()))
+    train_acc_binary_history= []
+    train_acc_unary_history = []
+    train_loss_binary_history = []
+    train_loss_unary_history = []
+    
+    test_acc_binary_history= []
+    test_acc_unary_history = []
+    test_loss_binary_history = []
+    test_loss_unary_history = []
+    
+    val_acc_binary_history= []
+    val_acc_unary_history = []
+    val_loss_binary_history = []
+    val_loss_unary_history = []
+    patience = 5
     with open(f'./{args.model}_{args.seed}_log.csv', 'w') as log_file:
         csv_writer = csv.writer(log_file, delimiter=',')
         csv_writer.writerow(['epoch', 'train_acc_rel',
                         'train_acc_norel', 'test_acc_rel', 'test_acc_norel'])
 
         print(f"Training {args.model} {f'({args.relation_type})' if args.model == 'RN' else ''} model...")
-
+        
+        early_stopping = EarlyStopping(patience=patience, verbose=True)
         for epoch in range(1, args.epochs + 1):
-            train_acc_binary, train_acc_unary = train(
+            train_acc_binary, train_acc_unary,train_loss_binary,train_loss_unary = train(
                 epoch, rel_train, norel_train)
-            test_acc_binary, test_acc_unary = test(
+            
+            val_acc_binary, val_acc_unary,val_loss_binary,val_loss_unary = validate(
+                epoch, rel_val, norel_val)
+                
+            test_acc_binary, test_acc_unary,test_loss_binary,test_loss_unary = test(
                 epoch, rel_test, norel_test)
+            
+            train_acc_binary_history.append(train_acc_binary)
+            train_acc_unary_history.append(train_acc_unary)
+            train_loss_binary_history.append(train_loss_binary)
+            train_loss_unary_history.append(train_loss_unary)
+            if test_loss_binary>1:
+                test_loss_binary = test_loss_binary_history[-1]
+                test_loss_unary = test_loss_unary_history[-1]
+            test_acc_binary_history.append(test_acc_binary)
+            test_acc_unary_history.append(test_acc_unary)
+            test_loss_binary_history.append(test_loss_binary)
+            test_loss_unary_history.append(test_loss_unary)
+            
+            val_acc_binary_history.append(val_acc_binary)
+            val_acc_unary_history.append(val_acc_unary)
+            val_loss_binary_history.append(val_loss_binary)
+            val_loss_unary_history.append(val_loss_unary)
 
             csv_writer.writerow([epoch, train_acc_binary,
                             train_acc_unary, test_acc_binary, test_acc_unary])
+                            
+            early_stopping(val_loss_binary+val_loss_unary, model)
+            if early_stopping.early_stop:
+                print('early stopped')
+                break
+        final_epoch = epoch
+        model.load_state_dict(torch.load('checkpoint.pt'))
         model.save_model(epoch)
-
+        
+    plt.figure()
+    epo = range(1, final_epoch + 1)
+    plt.plot(epo,train_loss_binary_history)
+    plt.plot(epo,train_loss_unary_history)
+    plt.plot(epo,test_loss_binary_history)
+    plt.plot(epo,test_loss_unary_history)
+    plt.axvline(x=final_epoch-patience,color='r', linestyle='--')
+    plt.legend(['train_loss_binary','train_loss_unary','test_loss_binary','test_loss_unary','early_stop'])
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.xticks(range(1,final_epoch + 1,2))
+    plt.show()
+    FIGname = 'train_curve.png'
+    FIGpath = F"/content/drive/My Drive/Evolution.AI---RN/{FIGname}"
+    plt.savefig(FIGpath)
+    
     # # remove dataset
     # data_dir = "./data/more-clevr.pickle"
     # if os.path.isfile(data_dir):

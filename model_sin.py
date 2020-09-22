@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
+from matplotlib import pyplot as plt
 
 
 class ConvInputModel(nn.Module):
@@ -77,19 +78,22 @@ class BasicModel(nn.Module):
         return accuracy, loss
 
     def save_model(self, epoch):
-        torch.save(self.state_dict(), 'model/epoch_{}_{:02d}.pth'.format(self.name, epoch))
+        #torch.save(self.state_dict(), 'model/epoch_{}_{:02d}.pth'.format(self.name, epoch))
+        model_save_name = 'sin_summed.pth'
+        path = F"/content/drive/My Drive/Evolution.AI---RN/model_saved/{model_save_name}" 
+        torch.save(self.state_dict(), path)
 
 
 class RN(BasicModel):
     def __init__(self, args):
         super(RN, self).__init__(args, 'RN')
-        print('Initialise Model 4D')
+        print('normal sin summed')
         self.conv = ConvInputModel()
         
         self.relation_type = args.relation_type
         
         ##(number of filters per object+coordinate of object)*2+question vector
-        self.g_fc1 = nn.Linear((28)*2+19, 256)
+        self.g_fc1 = nn.Linear((24)*2+19, 256)
 
         self.g_fc2 = nn.Linear(256, 256)
         self.g_fc3 = nn.Linear(256, 256)
@@ -107,20 +111,21 @@ class RN(BasicModel):
 
         self.temperature = 10000
         # prepare coord tensor
-        self.feature_dim = 4
-        self.xy_dim = 2
+        self.feature_dim = 24
+        self.xy_dim = int(self.feature_dim/2)
         def cvt_coord(i):
             dim_t = np.arange(self.xy_dim)
             dim_t = self.temperature**(2 * (dim_t // 2) / self.feature_dim )
-            x = i//5
-            y = i%5
+            x = i//5#row
+            y = i%5#col
             x_pos = dim_t 
             y_pos = dim_t.copy()
             
             x_pos[0:self.xy_dim:2] = np.sin(x/x_pos[0:self.xy_dim:2])
             x_pos[1:self.xy_dim:2] = np.cos(x/x_pos[1:self.xy_dim:2])
-            y_pos[0:self.xy_dim:2] = np.sin(x/y_pos[0:self.xy_dim:2])
-            y_pos[1:self.xy_dim:2] = np.cos(x/y_pos[1:self.xy_dim:2])
+            y_pos[0:self.xy_dim:2] = np.sin(y/y_pos[0:self.xy_dim:2])
+            y_pos[1:self.xy_dim:2] = np.cos(y/y_pos[1:self.xy_dim:2])
+            #y_pos = np.random.rand(self.xy_dim)
             pos = np.concatenate((x_pos,y_pos))
             return pos
         self.coord_tensor = torch.FloatTensor(args.batch_size, 25, self.feature_dim)
@@ -130,6 +135,9 @@ class RN(BasicModel):
         np_coord_tensor = np.zeros((args.batch_size, 25, self.feature_dim))#64x25x4
         for i in range(25):#5x5 feature map
             np_coord_tensor[:,i,:] = np.array( cvt_coord(i) )
+        # plt.figure()
+        # plt.imshow(np_coord_tensor[63])
+        # plt.show()
         self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
 
         self.fcout = FCOutputModel()
@@ -139,17 +147,21 @@ class RN(BasicModel):
 
     def forward(self, img, qst):
         x = self.conv(img) ## x = (64 x 24 (num of feature maps) x 5 x 5)
-        
         """g"""
         mb = x.size()[0]#mini batch
-        n_channels = x.size()[1]
-        d = x.size()[2]
-        # x_flat = (64 x 25 x 24)
-        x_flat = x.view(mb,n_channels,d*d).permute(0,2,1)
+        n_channels = x.size()[1]#24
+        d = x.size()[2]#5
         
+        #x_flat = torch.einsum('abcd->abdc', x)#change flatten direction to col by col
+        
+        x_flat = x.view(mb,n_channels,d*d).permute(0,2,1)# x_flat = (64 x 25 x 24)
+        #x_flat1 = x.view(mb,n_channels,d*d).permute(0,2,1)
+        #x_flat2 = x_flat1.clone()
+        #x_flat = torch.cat([x_flat1, x_flat2],2)
         # add coordinates
-        x_flat = torch.cat([x_flat, self.coord_tensor],2)#64x25x28
-        # x_flat =x_flat+self.coord_tensor
+        #x_flat = torch.cat([x_flat, self.coord_tensor],2)#64x25x48
+        x_flat =x_flat+self.coord_tensor
+        
         if self.relation_type != 'ternary':
             # add question everywhere
             qst = torch.unsqueeze(qst, 1)
@@ -167,7 +179,7 @@ class RN(BasicModel):
             x_full = torch.cat([x_i,x_j],3) # (64x25x25x2*28+11)
         
             # reshape for passing through network
-            x_ = x_full.view(mb * (d * d) * (d * d), 75)  # (64*25*25x(2*28+19)) = (40.000, 75)
+            x_ = x_full.view(mb * (d * d) * (d * d), 2*24+19)  # (64*25*25x(2*24+19)) = (40.000, 67)
             
         x_ = self.g_fc1(x_)
         x_ = F.relu(x_)

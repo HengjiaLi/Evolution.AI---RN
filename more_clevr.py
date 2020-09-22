@@ -9,7 +9,7 @@ import warnings
 import argparse
 
 parser = argparse.ArgumentParser(description='Sort-of-CLEVR dataset generator')
-parser.add_argument('--seed', type=int, default=1, metavar='S',
+parser.add_argument('--seed', type=int, default=2020, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--t-subtype', type=int, default=-1,
                     help='Force ternary questions to be of a given type')
@@ -20,6 +20,11 @@ np.random.seed(args.seed)
 
 train_size = 9800
 test_size = 200
+val_size = 128
+# train_size = 100
+# test_size = 50
+# val_size = 50
+
 img_size = 75
 size = 5 #radius of object
 question_size = 19 ## (6 for one-hot vector of color), 2 for question type, 5 for question subtype
@@ -48,7 +53,9 @@ except:
 def center_generate(objects):
     while True:
         pas = True
-        center = np.random.randint(0+size, img_size - size, 2)        
+        center = np.random.randint(0+size, img_size - size, 2)
+        #a =  np.random.randint(0+size, img_size - size, 2)
+        #center = np.asarray([a[1],a[0]])#flip x-y coordinate
         if len(objects) > 0:
             for name,c,shape in objects:
                 if ((center - c) ** 2).sum() < ((size * 2) ** 2):
@@ -151,7 +158,7 @@ def build_dataset():#for each image
                     count +=1 
             answer = count+4
         elif subtype == 3:#17
-            ''' if color2 is above the current object --->yes or no'''
+            ''' if current object is above object 2--->yes or no'''
             
             color2 = random.randint(0,5)#select second color
             question[color2+6] = 1
@@ -182,12 +189,13 @@ def build_dataset():#for each image
     dataset = (img, binary_relations, norelations)
     return dataset
 
-
+#print('x-y flipped')
 print('building test datasets...')
 test_datasets = [build_dataset() for _ in range(test_size)]
 print('building train datasets...')
 train_datasets = [build_dataset() for _ in range(train_size)]
-
+print('building validation datasets...')
+val_datasets = [build_dataset() for _ in range(val_size)]
 
 #img_count = 0
 #cv2.imwrite(os.path.join(dirs,'{}.png'.format(img_count)), cv2.resize(train_datasets[0][0]*255, (512,512)))
@@ -195,5 +203,5 @@ train_datasets = [build_dataset() for _ in range(train_size)]
 print('saving datasets...')
 filename = os.path.join(dirs,'more-clevr.pickle')
 with  open(filename, 'wb') as f:
-    pickle.dump((train_datasets, test_datasets), f)
+    pickle.dump((train_datasets, test_datasets, val_datasets), f)
 print('datasets saved at {}'.format(filename))

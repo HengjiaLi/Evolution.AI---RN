@@ -77,13 +77,17 @@ class BasicModel(nn.Module):
         return accuracy, loss
 
     def save_model(self, epoch):
-        torch.save(self.state_dict(), 'model/epoch_{}_{:02d}.pth'.format(self.name, epoch))
+        #torch.save(self.state_dict(), 'model/epoch_{}_{:02d}.pth'.format(self.name, epoch))
+        model_save_name = 'sim.pth'
+        path = F"/content/drive/My Drive/Evolution.AI---RN/{model_save_name}" 
+        
+        torch.save(self.state_dict(), path)
 
 
 class RN(BasicModel):
     def __init__(self, args):
         super(RN, self).__init__(args, 'RN')
-        
+        #print('sim')
         self.conv = ConvInputModel()
         
         self.relation_type = args.relation_type
@@ -107,8 +111,8 @@ class RN(BasicModel):
 
         # prepare coord tensor
         def cvt_coord(i):
-            #return [(i//5-2)/2., (i%5-2)/2.]
-            return [(i//5-2)/2.,np.random.rand()]
+            return [(i//5-2)/2., (i%5-2)/2.]
+            #return [(i//5-2)/2.,np.random.rand()]
         
         self.coord_tensor = torch.FloatTensor(args.batch_size, 25, 2)
         if args.cuda:

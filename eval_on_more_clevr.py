@@ -7,7 +7,7 @@ from torch.autograd import Variable
 import argparse
 import random
 from main import load_data,cvt_data_axis
-from model_sim import RN
+from model_sin import RN
 
 # SPLIT DATASET
 def split_data(data):
@@ -76,7 +76,10 @@ args.cuda = not args.no_cuda and torch.cuda.is_available()
 model = RN(args)
 
 #path="./All Model/simple_RNnoPE.pth"
-path="./model/epoch_RN_20.pth"
+#path="./model/epoch_RN_20.pth"
+#path="./model/sim_noH.pth"
+model_save_name = 'sin_summed.pth'
+path = F"/content/drive/My Drive/Evolution.AI---RN/model_saved/{model_save_name}"#Gdrive path
 if torch.cuda.is_available():
     # os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -117,7 +120,7 @@ def test(data):
     acc = sum(accuracy) / len(accuracy)
     return acc
 # TEST
-rel_train, rel_test, norel_train, norel_test = load_data()
+rel_train, rel_test,rel_val,norel_train, norel_test,norel_val = load_data()
 Q1,Q2,Q3,_,_,_,_,_ = split_data(norel_test)
 acc = test(Q1)
 print('\n Test set: Unary accuracy (shape of object): {:.0f}%\n'.format(acc))
