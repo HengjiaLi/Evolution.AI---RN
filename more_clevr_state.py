@@ -1,27 +1,31 @@
-# More-CLEVR without images, but state descriptions of ground truth.
+"""Generate the state description version of the extended Sort-of-CLEVR dataset"""
+
+# import packages
 import cv2
 import os
 import numpy as np
 import random
-#import cPickle as pickle
 import pickle
 import warnings
 import argparse
 
 parser = argparse.ArgumentParser(description='Sort-of-CLEVR dataset generator')
-parser.add_argument('--seed', type=int, default=2021, metavar='S',
-                    help='random seed (default: 1)')
+parser.add_argument('--seed', type=int, default=2020, metavar='S',
+                    help='random seed (default: 1)')#random seed
 parser.add_argument('--t-subtype', type=int, default=-1,
                     help='Force ternary questions to be of a given type')
 args = parser.parse_args()
 
+# define random seed
 random.seed(args.seed)
 np.random.seed(args.seed)
-print('2020')
+
+# define dataset size
 train_size = 9800
 test_size = 200
 val_size = 128
 
+# define image-question size
 img_size = 75
 size = 5 #radius of object
 question_size = 19 ## (6 for one-hot vector of color), 2 for question type, 5 for question subtype
@@ -29,9 +33,10 @@ q_type_idx = 12
 sub_q_type_idx = 14
 """Answer : [yes, no, rectangle, circle, r, g, b, o, k, y]"""
 
-nb_questions = 15
-dirs = './data'
+nb_questions = 15# Each image contains 15 relational and 15 non-relational Qs
+dirs = './data'# Directory of storing the dataset
 
+# colors of the objects
 colors = [
     (0,0,255),##r
     (0,255,0),##g
@@ -47,41 +52,43 @@ try:
 except:
     print('directory {} already exists'.format(dirs))
 
-def center_generate(objects):
+def center_generate(objects):# generate random object centers
     while True:
         pas = True
         center = np.random.randint(0+size, img_size - size, 2)
-        #a =  np.random.randint(0+size, img_size - size, 2)
-        #center = np.asarray([a[1],a[0]])#flip x-y coordinate
         if len(objects) > 0:
             for obj in objects:
-                if ((center - obj[6:8]) ** 2).sum() < ((size * 2) ** 2):
+                if ((center - obj[6:8]) ** 2).sum() < ((size * 2) ** 2):# if objects overlap
                     pas = False
         if pas:
             return center
 
 
 
-def build_dataset():#for each image
-    objects = []
+def build_dataset():# generate one image
+    '''
+    Generate Objects
+    '''
+    objects = []# store all six objects
     img = np.ones((img_size,img_size,3)) * 255
     for color_id,color in enumerate(colors):  
         center = center_generate(objects)
         color = np.zeros(6)
         color[color_id] = 1
-        if random.random()<0.5:
+        if random.random()<0.5:# Determine shape of the object
             start = (center[0]-size, center[1]-size)
             end = (center[0]+size, center[1]+size)
-            cv2.rectangle(img, start, end, colors[color_id], -1)#artificially generates recs
+            cv2.rectangle(img, start, end, colors[color_id], -1)#draw image
             shape = np.asarray([1,0])#rectangle
             objects.append(np.hstack((color,center,shape)))
         else:
             center_ = (center[0], center[1])
-            cv2.circle(img, center_, size, colors[color_id], -1)#artificially generates circles
+            cv2.circle(img, center_, size, colors[color_id], -1)
             shape = np.asarray([0,1])#circle
             objects.append(np.hstack((color,center,shape)))
-
-
+    '''
+    Generate Questions
+    '''
     #ternary_questions = []
     binary_questions = []
     norel_questions = []
@@ -186,12 +193,12 @@ def build_dataset():#for each image
     binary_relations = (binary_questions, binary_answers)
     norelations = (norel_questions, norel_answers)
     img = img/255.
-    #img_states = [item for sublist in objects for item in sublist]#flatten objects
-    img_states = [item for sublist in objects for item in np.delete(sublist,[6,7])]#delete center coordinate
+    img_states = [item for sublist in objects for item in sublist]#flatten objects
+    #img_states = [item for sublist in objects for item in np.delete(sublist,[6,7])]# delete center coordinate
     dataset = (img_states, binary_relations, norelations,img)
     return dataset
 
-#print('x-y flipped')
+# Create train/test/val datasets
 print('building test datasets...')
 test_datasets = [build_dataset() for _ in range(test_size)]
 print('building train datasets...')
@@ -199,8 +206,6 @@ train_datasets = [build_dataset() for _ in range(train_size)]
 print('building validation datasets...')
 val_datasets = [build_dataset() for _ in range(val_size)]
 
-#img_count = 0
-#cv2.imwrite(os.path.join(dirs,'{}.png'.format(img_count)), cv2.resize(train_datasets[0][0]*255, (512,512)))
 
 print('saving datasets...')
 filename = os.path.join(dirs,'more-clevr_state.pickle')

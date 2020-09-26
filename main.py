@@ -1,26 +1,22 @@
 """""""""
-Pytorch implementation of "A simple neural network module for relational reasoning
-Code is based on pytorch/examples/mnist (https://github.com/pytorch/examples/tree/master/mnist)
+Pytorch implementation of training/testing the Relational Network
 """""""""
+
+# import packages
 from __future__ import print_function
 import argparse
 import os
-#import cPickle as pickle
 import pickle
 import random
 import numpy as np
 import csv
-
 os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"# Choose available GPU
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch.autograd import Variable
-
 from model_sin import RN, CNN_MLP
 from matplotlib import pyplot as plt
-
 # import EarlyStopping
 from pytorchtools import EarlyStopping
 
@@ -44,21 +40,18 @@ parser.add_argument('--resume', type=str,
                     help='resume from model stored')
 parser.add_argument('--relation-type', type=str, default='binary',
                     help='what kind of relations to learn. options: binary, ternary (default: binary)')
-
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
-
 torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
-
 summary_writer = SummaryWriter()
-
 if args.model=='CNN_MLP': 
   model = CNN_MLP(args)
 else:
   model = RN(args)
-  
+
+
 model_dirs = './model'
 bs = args.batch_size
 input_img = torch.FloatTensor(bs, 3, 75, 75)
@@ -75,7 +68,7 @@ input_img = Variable(input_img)
 input_qst = Variable(input_qst)
 label = Variable(label)
 
-def tensor_data(data, i):
+def tensor_data(data, i):# convert input array to tensors on GPU
     img = torch.from_numpy(np.asarray(data[0][bs*i:bs*(i+1)]))
     qst = torch.from_numpy(np.asarray(data[1][bs*i:bs*(i+1)]))
     ans = torch.from_numpy(np.asarray(data[2][bs*i:bs*(i+1)]))
@@ -85,7 +78,7 @@ def tensor_data(data, i):
     label.data.resize_(ans.size()).copy_(ans)
 
 
-def cvt_data_axis(data):
+def cvt_data_axis(data):# Split image, question, answer from the inputs
     img = [e[0] for e in data]
     qst = [e[1] for e in data]
     ans = [e[2] for e in data]
@@ -93,15 +86,15 @@ def cvt_data_axis(data):
 
     
 def train(epoch,rel, norel):
-    model.train()
-
+    model.train()# tune the model to be in train mode
     if not len(rel[0]) == len(norel[0]):
         print('Not equal length for relation dataset and non-relation dataset.')
         return
-    
+    # shuffle data
     random.shuffle(rel)
     random.shuffle(norel)
 
+    # split data to images/questions/ans
     rel = cvt_data_axis(rel)
     norel = cvt_data_axis(norel)
 
@@ -113,17 +106,17 @@ def train(epoch,rel, norel):
 
     for batch_idx in range(len(rel[0]) // bs):
 
-        tensor_data(rel, batch_idx)
+        tensor_data(rel, batch_idx)# put data on GPU tensor
         accuracy_rel, loss_binary = model.train_(input_img, input_qst, label)
         acc_rels.append(accuracy_rel.item())
         l_binary.append(loss_binary.item())
 
-        tensor_data(norel, batch_idx)
+        tensor_data(norel, batch_idx)# put data on GPU tensor
         accuracy_norel, loss_unary = model.train_(input_img, input_qst, label)
         acc_norels.append(accuracy_norel.item())
         l_unary.append(loss_unary.item())
 
-        if batch_idx % args.log_interval == 0:
+        if batch_idx % args.log_interval == 0:# log training process
             print('Train Epoch: {} [{}/{} ({:.0f}%)] '
                   'Relations accuracy: {:.0f}% | Non-relations accuracy: {:.0f}%'.format(
                    epoch,
@@ -132,33 +125,31 @@ def train(epoch,rel, norel):
                    100. * batch_idx * bs / len(rel[0]),
                    accuracy_rel,
                    accuracy_norel))
-        
     avg_acc_binary = sum(acc_rels) / len(acc_rels)
     avg_acc_unary = sum(acc_norels) / len(acc_norels)
-
     summary_writer.add_scalars('Accuracy/train', {
         'binary': avg_acc_binary,
         'unary': avg_acc_unary
     }, epoch)
-
     avg_loss_binary = sum(l_binary) / len(l_binary)
     avg_loss_unary = sum(l_unary) / len(l_unary)
-
     summary_writer.add_scalars('Loss/train', {
         'binary': avg_loss_binary,
         'unary': avg_loss_unary
     }, epoch)
 
-    # return average accuracy
+    # return average accuracy and loss
     return avg_acc_binary, avg_acc_unary,avg_loss_binary,avg_loss_unary
 
 def test(epoch,rel, norel):
-    model.eval()
+    model.eval() # tune model to be in test mode, so paramters are frozen
     if not len(rel[0]) == len(norel[0]):
         print('Not equal length for relation dataset and non-relation dataset.')
         return
+    # shuffle data
     random.shuffle(rel)
     random.shuffle(norel)
+    # split data to images/questions/ans
     rel = cvt_data_axis(rel)
     norel = cvt_data_axis(norel)
 
@@ -168,20 +159,16 @@ def test(epoch,rel, norel):
     loss_binary = []
     loss_unary = []
     
-    #print(len(rel[0]))
     for batch_idx in range(len(rel[0]) // bs):
-
-        tensor_data(rel, batch_idx)
+        tensor_data(rel, batch_idx)# put test data on GPU
         acc_bin, l_bin = model.test_(input_img, input_qst, label)
         accuracy_rels.append(acc_bin.item())
         loss_binary.append(l_bin.item())
 
-        tensor_data(norel, batch_idx)
+        tensor_data(norel, batch_idx)# put test data on GPU
         acc_un, l_un = model.test_(input_img, input_qst, label)
         accuracy_norels.append(acc_un.item())
         loss_unary.append(l_un.item())
-        #print(l_bin.item())
-        #print(batch_idx)
     
     avg_acc_binary = sum(accuracy_rels) / len(accuracy_rels)
     avg_acc_unary = sum(accuracy_norels) / len(accuracy_norels)
@@ -200,13 +187,6 @@ def test(epoch,rel, norel):
         'unary': avg_loss_unary
     }, epoch)
     
-    #sanity check
-    #
-    # if avg_loss_binary>1:
-    #     print(loss_binary)
-    #     model_save_name = 'overflow.pth'
-    #     path = F"/content/drive/My Drive/Evolution.AI---RN/{model_save_name}" 
-    #     torch.save(model.state_dict(), path)
     return avg_acc_binary, avg_acc_unary,avg_loss_binary,avg_loss_unary
 
 def validate(epoch,rel, norel):
@@ -256,7 +236,7 @@ def validate(epoch,rel, norel):
     return avg_acc_binary, avg_acc_unary,avg_loss_binary,avg_loss_unary
 
     
-def load_data():
+def load_data():# load data from pickle file
     print('loading data...')
     dirs = './data'
     filename = os.path.join(dirs,'more-clevr.pickle')
@@ -269,21 +249,21 @@ def load_data():
     norel_test = []
     norel_val = []
     print('processing data...')
-
+    # training data
     for img, relations, norelations in train_datasets:
         img = np.swapaxes(img, 0, 2)
         for qst,ans in zip(relations[0], relations[1]):
             rel_train.append((img,qst,ans))
         for qst,ans in zip(norelations[0], norelations[1]):
             norel_train.append((img,qst,ans))
-
+    # test data
     for img, relations, norelations in test_datasets:
         img = np.swapaxes(img, 0, 2)
         for qst,ans in zip(relations[0], relations[1]):
             rel_test.append((img,qst,ans))
         for qst,ans in zip(norelations[0], norelations[1]):
             norel_test.append((img,qst,ans))
-            
+    # validation data       
     for img, relations, norelations in val_datasets:
         img = np.swapaxes(img, 0, 2)
         for qst,ans in zip(relations[0], relations[1]):
@@ -294,20 +274,21 @@ def load_data():
     return (rel_train, rel_test,rel_val, norel_train, norel_test,norel_val)
     
 if __name__ == "__main__":
-    rel_train, rel_test,rel_val,norel_train, norel_test,norel_val = load_data()
+    rel_train, rel_test,rel_val,norel_train, norel_test,norel_val = load_data() #load and split data into relational/non-relation sets
     try:
         os.makedirs(model_dirs)
     except:
         print('directory {} already exists'.format(model_dirs))
 
-    if args.resume:
+    if args.resume: # if resume training
         filename = os.path.join(model_dirs, args.resume)
         if os.path.isfile(filename):
             print('==> loading checkpoint {}'.format(filename))
             checkpoint = torch.load(filename)
             model.load_state_dict(checkpoint)
             print('==> loaded checkpoint {}'.format(filename))
-    #print(list(model.parameters()))
+
+    # record train/test/val history
     train_acc_binary_history= []
     train_acc_unary_history = []
     train_loss_binary_history = []
@@ -322,7 +303,7 @@ if __name__ == "__main__":
     val_acc_unary_history = []
     val_loss_binary_history = []
     val_loss_unary_history = []
-    patience = 5
+    patience = 5 # a patience parameter for Early-Stop. training stops if validation loss stops decreasing for 5 epochs
     with open(f'./{args.model}_{args.seed}_log.csv', 'w') as log_file:
         csv_writer = csv.writer(log_file, delimiter=',')
         csv_writer.writerow(['epoch', 'train_acc_rel',
@@ -330,17 +311,16 @@ if __name__ == "__main__":
 
         print(f"Training {args.model} {f'({args.relation_type})' if args.model == 'RN' else ''} model...")
         
-        early_stopping = EarlyStopping(patience=patience, verbose=True)
+        early_stopping = EarlyStopping(patience=patience, verbose=True)# import Early Stop
+
         for epoch in range(1, args.epochs + 1):
             train_acc_binary, train_acc_unary,train_loss_binary,train_loss_unary = train(
-                epoch, rel_train, norel_train)
-            
+                epoch, rel_train, norel_train)# Call batched training method defined in RN
             val_acc_binary, val_acc_unary,val_loss_binary,val_loss_unary = validate(
                 epoch, rel_val, norel_val)
-                
             test_acc_binary, test_acc_unary,test_loss_binary,test_loss_unary = test(
                 epoch, rel_test, norel_test)
-            
+            # record train/test/val history
             train_acc_binary_history.append(train_acc_binary)
             train_acc_unary_history.append(train_acc_unary)
             train_loss_binary_history.append(train_loss_binary)
@@ -365,10 +345,11 @@ if __name__ == "__main__":
             if early_stopping.early_stop:
                 print('early stopped')
                 break
-        final_epoch = epoch
-        model.load_state_dict(torch.load('checkpoint.pt'))
-        model.save_model(epoch)
-        
+        final_epoch = epoch # record the last epoch
+        model.load_state_dict(torch.load('checkpoint.pt'))# load the paramters at the checkpoint(the epoch with best val performance)
+        model.save_model(epoch)# save model
+
+    # plot train/test history    
     plt.figure()
     epo = range(1, final_epoch + 1)
     plt.plot(epo,train_loss_binary_history)
@@ -383,7 +364,7 @@ if __name__ == "__main__":
     plt.show()
     FIGname = 'train_curve.png'
     FIGpath = F"/content/drive/My Drive/Evolution.AI---RN/{FIGname}"
-    plt.savefig(FIGpath)
+    plt.savefig(FIGpath)#save figure on Gdrive
     
     # # remove dataset
     # data_dir = "./data/more-clevr.pickle"
