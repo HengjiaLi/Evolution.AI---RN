@@ -17,10 +17,11 @@ more_clevr.py -- Generate the extended pixel version of the Sort-of-CLEVR datase
 more_clevr_state.py -- Generate the extended state description version of the Sort-of-CLEVR dataset.
 
 model_sim.py -- Defines the simplified RN model with arbitrary X-Y coordinate PE\
+model_sim_state.py -- Defines the simplified RN model with arbitrary X-Y coordinate PE and state description inputs\
 model_sim_noH.py -- Defines the simplified RN model with arbitrary X-Y coordinate PE, with the horizontal coordinate been removed\
 model_simnoPE.py -- Defines the simplified RN model with padding but no PE\
-model_simnoPadding.py -- Defines the simplified RN model without padding\
-model_simReplicate -- Defines the simplified RN model with replicate padding
+model_noPadding.py -- Defines the simplified RN model without padding\
+model_replicate -- Defines the simplified RN model with replicate padding
 
 model_sin.py -- Defines the simplified RN model with sinusoidal PE\
 model_sin_relative.py -- Defines the simplified RN model with sinusoidal PE + relative distance
