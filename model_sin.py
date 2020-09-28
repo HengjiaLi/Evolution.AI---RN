@@ -1,4 +1,4 @@
-#simple RN
+"""RN model with summed Sinusoidal PE"""
 import numpy as np
 import torch
 import torch.nn as nn
@@ -101,17 +101,9 @@ class RN(BasicModel):
 
         self.f_fc1 = nn.Linear(256, 256)
 
-        # self.coord_oi = torch.FloatTensor(args.batch_size, 2)
-        # self.coord_oj = torch.FloatTensor(args.batch_size, 2)
-        # if args.cuda:
-        #     self.coord_oi = self.coord_oi.cuda()
-        #     self.coord_oj = self.coord_oj.cuda()
-        # self.coord_oi = Variable(self.coord_oi)
-        # self.coord_oj = Variable(self.coord_oj)
-
+        # prepare Sinusoidal PE
         self.temperature = 10000
-        # prepare coord tensor
-        self.feature_dim = 24
+        self.feature_dim = 24 # number of channels of the PE
         self.xy_dim = int(self.feature_dim/2)
         def cvt_coord(i):
             dim_t = np.arange(self.xy_dim)
@@ -125,7 +117,6 @@ class RN(BasicModel):
             x_pos[1:self.xy_dim:2] = np.cos(x/x_pos[1:self.xy_dim:2])
             y_pos[0:self.xy_dim:2] = np.sin(y/y_pos[0:self.xy_dim:2])
             y_pos[1:self.xy_dim:2] = np.cos(y/y_pos[1:self.xy_dim:2])
-            #y_pos = np.random.rand(self.xy_dim)
             pos = np.concatenate((x_pos,y_pos))
             return pos
         self.coord_tensor = torch.FloatTensor(args.batch_size, 25, self.feature_dim)
@@ -135,9 +126,7 @@ class RN(BasicModel):
         np_coord_tensor = np.zeros((args.batch_size, 25, self.feature_dim))#64x25x4
         for i in range(25):#5x5 feature map
             np_coord_tensor[:,i,:] = np.array( cvt_coord(i) )
-        # plt.figure()
-        # plt.imshow(np_coord_tensor[63])
-        # plt.show()
+
         self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
 
         self.fcout = FCOutputModel()
@@ -152,14 +141,10 @@ class RN(BasicModel):
         n_channels = x.size()[1]#24
         d = x.size()[2]#5
         
-        #x_flat = torch.einsum('abcd->abdc', x)#change flatten direction to col by col
-        
         x_flat = x.view(mb,n_channels,d*d).permute(0,2,1)# x_flat = (64 x 25 x 24)
-        #x_flat1 = x.view(mb,n_channels,d*d).permute(0,2,1)
-        #x_flat2 = x_flat1.clone()
-        #x_flat = torch.cat([x_flat1, x_flat2],2)
+
         # add coordinates
-        #x_flat = torch.cat([x_flat, self.coord_tensor],2)#64x25x48
+        #x_flat = torch.cat([x_flat, self.coord_tensor],2)#64x25x48 append the Sinusoidal PE
         x_flat =x_flat+self.coord_tensor
         
         if self.relation_type != 'ternary':
@@ -169,14 +154,14 @@ class RN(BasicModel):
             qst = torch.unsqueeze(qst, 2)
 
             # cast all pairs against each other
-            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x28+11)
-            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x28+11)
-            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x28+11)
-            x_j = torch.cat([x_j, qst], 3)
-            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x28+11)
+            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x24)
+            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x24)
+            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x24)
+            x_j = torch.cat([x_j, qst], 3)# (64x25x1x24+19)
+            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x24+19)
             
             # concatenate all together
-            x_full = torch.cat([x_i,x_j],3) # (64x25x25x2*28+11)
+            x_full = torch.cat([x_i,x_j],3) # (64x25x25x2*24+19)
         
             # reshape for passing through network
             x_ = x_full.view(mb * (d * d) * (d * d), 2*24+19)  # (64*25*25x(2*24+19)) = (40.000, 67)

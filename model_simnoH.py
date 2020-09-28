@@ -1,4 +1,4 @@
-#simple RN
+""""Simple RN with one of X-Y coordinate been hidden"""
 import numpy as np
 import torch
 import torch.nn as nn

@@ -1,3 +1,5 @@
+""" Evaluate RN's performance on the state descriptions
+"""
 import os
 import pickle
 import numpy as np
@@ -75,19 +77,16 @@ args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 model = RN(args)
 
-#path="./All Model/simple_RNnoPE.pth"
-#path="./model/epoch_RN_20.pth"
-#path="./model/sim_noH.pth"
+# load saved model
 model_save_name = 'sim_statenoGT.pth'
 path = F"/content/drive/My Drive/Evolution.AI---RN/{model_save_name}"#Gdrive path
 if torch.cuda.is_available():
-    # os.environ["CUDA_CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     model.load_state_dict(torch.load(path))
 else:
     print('useing CPU')
     model.load_state_dict(torch.load(path,map_location=torch.device('cpu')))
 
+# define input tensors
 bs = args.batch_size
 input_img = torch.FloatTensor(bs, 6*8)
 input_qst = torch.FloatTensor(bs, 19)
@@ -119,8 +118,9 @@ def test(data):
         accuracy.append(acc_bin.item())
     acc = sum(accuracy) / len(accuracy)
     return acc
-# TEST
+
 rel_train, rel_test,rel_val,norel_train, norel_test,norel_val = load_data()
+# TEST on non-relational sets
 Q1,Q2,Q3,_,_,_,_,_ = split_data(norel_test)
 acc = test(Q1)
 print('\n Test set: Unary accuracy (shape of object): {:.0f}%\n'.format(acc))
@@ -129,6 +129,7 @@ print('\n Test set: Unary accuracy (query vertical position): {:.0f}%\n'.format(
 acc = test(Q3)
 print('\n Test set: Unary accuracy (query horizontal position->yes/no): {:.0f}%\n'.format(acc))
 
+# TEST on relational sets
 _,_,_,Q4,Q5,Q6,Q7,Q8 = split_data(rel_test)
 print(np.shape(Q4))
 acc = test(Q4)

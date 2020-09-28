@@ -1,3 +1,4 @@
+"""Evaluate RN's test performance"""
 import os
 import pickle
 import numpy as np
@@ -9,7 +10,7 @@ import random
 from main import load_data,cvt_data_axis
 from model_sin import RN
 
-# SPLIT DATASET
+# SPLIT DATASET into sub questions
 def split_data(data):
     Q1 = []#shape of object
     Q2 = []#query vertical position->yes/no
@@ -75,9 +76,7 @@ args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 model = RN(args)
 
-#path="./All Model/simple_RNnoPE.pth"
-#path="./model/epoch_RN_20.pth"
-#path="./model/sim_noH.pth"
+# load model
 model_save_name = 'sin_summed.pth'
 path = F"/content/drive/My Drive/Evolution.AI---RN/model_saved/{model_save_name}"#Gdrive path
 if torch.cuda.is_available():
@@ -88,6 +87,7 @@ else:
     print('useing CPU')
     model.load_state_dict(torch.load(path,map_location=torch.device('cpu')))
 
+# Define input tensors
 bs = args.batch_size
 input_img = torch.FloatTensor(bs, 3, 75, 75)
 input_qst = torch.FloatTensor(bs, 19)
@@ -101,7 +101,7 @@ input_img = Variable(input_img)
 input_qst = Variable(input_qst)
 label = Variable(label)
 
-def tensor_data(data, i):
+def tensor_data(data, i):# put input on GPU tensor
     img = torch.from_numpy(np.asarray(data[0][bs*i:bs*(i+1)]))
     qst = torch.from_numpy(np.asarray(data[1][bs*i:bs*(i+1)]))
     ans = torch.from_numpy(np.asarray(data[2][bs*i:bs*(i+1)]))
@@ -110,7 +110,7 @@ def tensor_data(data, i):
     input_qst.data.resize_(qst.size()).copy_(qst)
     label.data.resize_(ans.size()).copy_(ans)
 
-def test(data):
+def test(data):# test model
     model.eval()
     accuracy = []
     for batch_idx in range(len(data[0]) // bs):
@@ -119,8 +119,11 @@ def test(data):
         accuracy.append(acc_bin.item())
     acc = sum(accuracy) / len(accuracy)
     return acc
-# TEST
+
+
 rel_train, rel_test,rel_val,norel_train, norel_test,norel_val = load_data()
+
+# TEST on non-relational questions
 Q1,Q2,Q3,_,_,_,_,_ = split_data(norel_test)
 acc = test(Q1)
 print('\n Test set: Unary accuracy (shape of object): {:.0f}%\n'.format(acc))
@@ -129,6 +132,7 @@ print('\n Test set: Unary accuracy (query vertical position): {:.0f}%\n'.format(
 acc = test(Q3)
 print('\n Test set: Unary accuracy (query horizontal position->yes/no): {:.0f}%\n'.format(acc))
 
+# TEST on elational questions
 _,_,_,Q4,Q5,Q6,Q7,Q8 = split_data(rel_test)
 acc = test(Q4)
 print('\n Test set: Binary accuracy (closest-to): {:.0f}%\n'.format(acc))

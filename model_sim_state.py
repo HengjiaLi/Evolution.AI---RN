@@ -1,4 +1,4 @@
-#simple RN
+""""RN trained on the staet description dataset"""
 import numpy as np
 import torch
 import torch.nn as nn
@@ -55,14 +55,11 @@ class BasicModel(nn.Module):
 class RN(BasicModel):
     def __init__(self, args):
         super(RN, self).__init__(args, 'RN')
-        #print('sim')
-        #self.conv = ConvInputModel()
         
         self.relation_type = args.relation_type
         
-        ##(number of filters per object+coordinate of object)*2+question vector
         self.g_dim = 256
-        self.g_fc1 = nn.Linear(8*2+19, self.g_dim)
+        self.g_fc1 = nn.Linear(10*2+19, self.g_dim)
         self.g_fc2 = nn.Linear(self.g_dim, self.g_dim)
         self.g_fc3 = nn.Linear(self.g_dim, self.g_dim)
         self.g_fc4 = nn.Linear(self.g_dim, self.g_dim)
@@ -102,7 +99,7 @@ class RN(BasicModel):
         
         """g"""
         mb = x.size()[0]#mini batch 64
-        n_channels = 8
+        n_channels = 10
         d = 6
         # x_flat = (64 x 6 x 10)
         x_flat = x.view(mb,d,n_channels)

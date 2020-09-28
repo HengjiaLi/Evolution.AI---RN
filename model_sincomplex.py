@@ -101,45 +101,18 @@ class RN(BasicModel):
 
         self.f_fc1 = nn.Linear(256, 256)
 
-        # self.coord_oi = torch.FloatTensor(args.batch_size, 2)
-        # self.coord_oj = torch.FloatTensor(args.batch_size, 2)
-        # if args.cuda:
-        #     self.coord_oi = self.coord_oi.cuda()
-        #     self.coord_oj = self.coord_oj.cuda()
-        # self.coord_oi = Variable(self.coord_oi)
-        # self.coord_oj = Variable(self.coord_oj)
-
+        # define complex PE
         self.temperature = 10000
         # prepare coord tensor
         self.feature_dim = 24
         self.xy_dim = int(self.feature_dim/2)
-        #self.coord_tensor = torch.FloatTensor(args.batch_size, 25, self.feature_dim)
         if args.cuda:
             #self.coord_tensor = self.coord_tensor.cuda()
             torch.set_default_tensor_type('torch.cuda.FloatTensor')
-        #self.coord_tensor = Variable(self.coord_tensor)
-        # np_coord_tensor = np.zeros((args.batch_size, 25, self.feature_dim))#64x25x24
-        
-        # for i in range(25):#5x5 feature map
-        #     np_coord_tensor[:,i,:] = np.array( cvt_coord(i) )
-        # plt.figure()
-        # plt.imshow(np_coord_tensor[63])
-        # plt.show()
-        # self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
 
         self.fcout = FCOutputModel()
         
-        
-        
-        # self.w_x = nn.Parameter(torch.rand(25, self.xy_dim),requires_grad=True).cuda() #25x12 for row
-        # self.cita_x = nn.Parameter(torch.rand(25, self.xy_dim),requires_grad=True).cuda() 
-        # self.r_x = nn.Parameter(torch.rand(25, self.xy_dim),requires_grad=True).cuda()
-        
-        # self.w_y = nn.Parameter(torch.rand(25, self.xy_dim),requires_grad=True).cuda()  #25x12 for col
-        # self.cita_y = nn.Parameter(torch.rand(25, self.xy_dim),requires_grad=True).cuda() 
-        # self.r_y = nn.Parameter(torch.rand(25, self.xy_dim),requires_grad=True).cuda()
-        
-        #shared-weights:same pixel location share same weights
+        # shared-weights:same pixel location share same weights
         self.w_x = nn.Parameter(torch.rand(25),requires_grad=True).cuda() #25 for row
         self.cita_x = nn.Parameter(torch.rand(25),requires_grad=True).cuda() 
         self.r_x = nn.Parameter(torch.rand(25),requires_grad=True).cuda()
@@ -148,6 +121,7 @@ class RN(BasicModel):
         self.cita_y = nn.Parameter(torch.rand(25),requires_grad=True).cuda() 
         self.r_y = nn.Parameter(torch.rand(25),requires_grad=True).cuda()
         
+        # create a map for row/col indeces
         self.bs = args.batch_size
         self.row_pos = torch.arange(5.0).repeat_interleave(5)
         self.row_pos = torch.unsqueeze(self.row_pos,1).repeat(1,12).cuda()
@@ -161,33 +135,18 @@ class RN(BasicModel):
         
         self.optimizer = optim.Adam(self.parameters(), lr=args.lr)
     
-    def cvt_coord_shared_weights(self):
+    def cvt_coord_shared_weights(self):# compute complex embedding
         temp_wx = torch.unsqueeze(self.w_x,1).repeat(1,self.xy_dim)#25x12
         temp_citax = torch.unsqueeze(self.cita_x,1).repeat(1,self.xy_dim)#25x12
         temp_x = torch.mul(self.row_pos,temp_wx)+temp_citax
         self.x_pos = torch.stack((torch.sin(temp_x[:,0:self.xy_dim:2]),torch.cos(temp_x[:,1:self.xy_dim:2])),dim = 2).flatten(1)
-        #self.x_pos = torch.mul(self.r_x,self.x_pos)
-        #self.x_pos = torch.cos(temp_x)
+
         
         temp_wy = torch.unsqueeze(self.w_y,1).repeat(1,self.xy_dim)#25x12
         temp_citay = torch.unsqueeze(self.cita_y,1).repeat(1,self.xy_dim)#25x12
         temp_y = torch.mul(self.col_pos,temp_wy)+temp_citay
         self.y_pos=torch.stack((torch.sin(temp_y[:,0:self.xy_dim:2]),torch.cos(temp_y[:,1:self.xy_dim:2])),dim = 2).flatten(1)
-        #self.y_pos = torch.mul(self.r_y,self.y_pos)
         self.pos = torch.unsqueeze(torch.cat((self.x_pos,self.y_pos),dim=1),0).repeat(self.bs,1,1)#64x25x24
-        #self.pos = torch.unsqueeze(torch.cat((temp_x,temp_y),dim=1),0).repeat(64,1,1)#64x25x24
-    
-       
-    def cvt_coord(self):
-        temp_x = torch.mul(self.row_pos,self.w_x)+self.cita_x
-        self.x_pos = torch.stack((torch.sin(temp_x[:,0:self.xy_dim:2]),torch.cos(temp_x[:,1:self.xy_dim:2])),dim = 2).flatten(1)
-        #self.x_pos = torch.mul(self.r_x,self.x_pos)
-        #self.x_pos = torch.cos(temp_x)
-        temp_y = torch.mul(self.col_pos,self.w_y)+self.cita_y
-        self.y_pos=torch.stack((torch.sin(temp_y[:,0:self.xy_dim:2]),torch.cos(temp_y[:,1:self.xy_dim:2])),dim = 2).flatten(1)
-        #self.y_pos = torch.mul(self.r_y,self.y_pos)
-        self.pos = torch.unsqueeze(torch.cat((self.x_pos,self.y_pos),dim=1),0).repeat(self.bs,1,1)#64x25x24
-        #self.pos = torch.unsqueeze(torch.cat((temp_x,temp_y),dim=1),0).repeat(64,1,1)#64x25x24
 
     def forward(self, img, qst):
         x = self.conv(img) ## x = (64 x 24 (num of feature maps) x 5 x 5)
@@ -195,19 +154,9 @@ class RN(BasicModel):
         mb = x.size()[0]#mini batch
         n_channels = x.size()[1]
         d = x.size()[2]
-        #x_flat = torch.einsum('abcd->abdc', x)#change flatten direction to col by col
         x_flat = x.view(mb,n_channels,d*d).permute(0,2,1) # x_flat = (64 x 25 x 24)
-        #x_flat1 = x.view(mb,n_channels,d*d).permute(0,2,1)
-        #x_flat2 = x_flat1.clone()
-        #x_flat = torch.cat([x_flat1, x_flat2],2)
-        # add coordinates
-        #x_flat = torch.cat([x_flat, self.coord_tensor],2)#64x25x48
-        #x_flat =torch.mul(x_flat,self.pos)
-        
-        #update positional encodings
-        #self.cvt_coord()
+
         self.cvt_coord_shared_weights()
-        #x_flat =x_flat+self.pos
         x_flat =torch.mul(x_flat,self.pos)
         if self.relation_type != 'ternary':
             # add question everywhere
@@ -216,14 +165,14 @@ class RN(BasicModel):
             qst = torch.unsqueeze(qst, 2)
 
             # cast all pairs against each other
-            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x28+11)
-            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x28+11)
-            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x28+11)
-            x_j = torch.cat([x_j, qst], 3)
-            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x28+11)
+            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x24)
+            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x24)
+            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x24)
+            x_j = torch.cat([x_j, qst], 3)# (64x25x1x24+19)
+            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x24+19)
             
             # concatenate all together
-            x_full = torch.cat([x_i,x_j],3) # (64x25x25x2*28+11)
+            x_full = torch.cat([x_i,x_j],3) # (64x25x25x2*24+19)
         
             # reshape for passing through network
             x_ = x_full.view(mb * (d * d) * (d * d), 67)  # (64*25*25x(2*24+19)) = (40.000, 67)

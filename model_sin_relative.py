@@ -1,4 +1,4 @@
-#simple RN
+"""RN model with sinusoidal PE + relative distance"""
 import numpy as np
 import torch
 import torch.nn as nn
@@ -94,7 +94,7 @@ class RN(BasicModel):
         
         self.relation_type = args.relation_type
         
-        ##(number of filters per object+coordinate of object)*2+question vector
+        ##(number of filters per object+PE)*2+relative distance + question vector = (24+4)*2+2+19
         self.g_fc1 = nn.Linear(48+10+19, 256)
 
         self.g_fc2 = nn.Linear(256, 256)
@@ -103,23 +103,16 @@ class RN(BasicModel):
 
         self.f_fc1 = nn.Linear(256, 256)
 
-        # self.coord_oi = torch.FloatTensor(args.batch_size, 2)
-        # self.coord_oj = torch.FloatTensor(args.batch_size, 2)
-        # if args.cuda:
-        #     self.coord_oi = self.coord_oi.cuda()
-        #     self.coord_oj = self.coord_oj.cuda()
-        # self.coord_oi = Variable(self.coord_oi)
-        # self.coord_oj = Variable(self.coord_oj)
-
+        # Define Sinusoidal PE
         self.temperature = 10000
         # prepare coord tensor
-        self.feature_dim = 24
+        self.feature_dim = 24 # number of channels of the PE
         self.xy_dim = int(self.feature_dim/2)
         def cvt_coord(i,j):
             dim_t = np.arange(self.xy_dim)
             dim_t = self.temperature**(2 * (dim_t // 2) / self.feature_dim )
             
-            #positional encoding for pixel at ith position
+            #positional encoding for pixel at the ith position
             x1 = i//5#row
             y1 = i%5#col
             x1_pos = dim_t.copy()
@@ -129,10 +122,9 @@ class RN(BasicModel):
             x1_pos[1:self.xy_dim:2] = np.cos(x1/x1_pos[1:self.xy_dim:2])
             y1_pos[0:self.xy_dim:2] = np.sin(y1/y1_pos[0:self.xy_dim:2])
             y1_pos[1:self.xy_dim:2] = np.cos(y1/y1_pos[1:self.xy_dim:2])
-            #y_pos = np.random.rand(self.xy_dim)
-            pos1 = np.concatenate((x1_pos[:2],y1_pos[:2]))
+            pos1 = np.concatenate((x1_pos[:2],y1_pos[:2])) #keep only the first dimensions
             
-            #positional encoding for pixel at ith position
+            #positional encoding for pixel at the jth position
             x2 = j//5#row
             y2 = j%5#col
             x2_pos = dim_t.copy()
@@ -142,27 +134,26 @@ class RN(BasicModel):
             x2_pos[1:self.xy_dim:2] = np.cos(x2/x2_pos[1:self.xy_dim:2])
             y2_pos[0:self.xy_dim:2] = np.sin(y2/y2_pos[0:self.xy_dim:2])
             y2_pos[1:self.xy_dim:2] = np.cos(y2/y2_pos[1:self.xy_dim:2])
-            #y_pos = np.random.rand(self.xy_dim)
-            pos2 = np.concatenate((x2_pos[:2],y2_pos[:2]))
+            pos2 = np.concatenate((x2_pos[:2],y2_pos[:2]))#keep only the first dimensions
             
+            # Compute relative distance
             x_relative = np.dot(x1_pos,x2_pos)
             y_relative = np.dot(y1_pos,y2_pos)
     
             pos = np.concatenate([pos1,pos2,[x_relative,y_relative]])
-            #pos = [x_relative,y_relative]
             return pos
-        #self.coord_tensor = torch.FloatTensor(args.batch_size,25,25,self.feature_dim*2+2)
-        self.coord_tensor = torch.FloatTensor(args.batch_size,25,25,10)
+
+        self.coord_tensor = torch.FloatTensor(args.batch_size,25,25,10)#10 = 4(PE)+4(PE)+2(relative distance)
         if args.cuda:
             self.coord_tensor = self.coord_tensor.cuda()
         self.coord_tensor = Variable(self.coord_tensor)
-        #np_coord_tensor = np.zeros((args.batch_size, 25, 25, self.feature_dim*2+2))#64x25x25x(24*2+2)
-        np_coord_tensor = np.zeros((args.batch_size, 25, 25,10))#64x25x25x(2)
+
+        np_coord_tensor = np.zeros((args.batch_size, 25, 25,10))
         for i in range(25):#5x5 feature map
             for j in range(25):
                 np_coord_tensor[:,i,j,:] = np.array( cvt_coord(i,j) )
-        #print(np_coord_tensor[0,0,:,-2:])
-        self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))#64x25x25x(24*2+2)
+
+        self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
 
         self.fcout = FCOutputModel()
         
@@ -175,13 +166,8 @@ class RN(BasicModel):
         mb = x.size()[0]#mini batch
         n_channels = x.size()[1]
         d = x.size()[2]
-        
-        #x_flat = torch.einsum('abcd->abdc', x)#change flatten direction to col by col
-        # x_flat = (64 x 25 x 24)
-        x_flat = x.view(mb,n_channels,d*d).permute(0,2,1)
-        #x_flat1 = x.view(mb,n_channels,d*d).permute(0,2,1)
-        #x_flat2 = x_flat1.clone()
-        #x_flat = torch.cat([x_flat1, x_flat2],2)
+
+        x_flat = x.view(mb,n_channels,d*d).permute(0,2,1)# x_flat = (64 x 25 x 24)
         
         if self.relation_type != 'ternary':
             # add question everywhere
@@ -190,20 +176,18 @@ class RN(BasicModel):
             qst = torch.unsqueeze(qst, 2)
 
             # cast all pairs against each other
-            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x24+19)
-            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x24+19)
-            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x24+19)
-            x_j = torch.cat([x_j, qst], 3)
+            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x24)
+            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x24)
+            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x24)
+            x_j = torch.cat([x_j, qst], 3)# (64x25x1x24+19)
             x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x24+19)
-            
             # concatenate all together
             x_notfull = torch.cat([x_i,x_j],3) # (64x25x25x48+19)
-            
             # add coordinates
-            x_full = torch.cat([x_notfull, self.coord_tensor],3)# (64x25x25x(48+50+19))
+            x_full = torch.cat([x_notfull, self.coord_tensor],3)# (64x25x25x(48+10+19))
             #x_flat =x_flat+self.coord_tensor
             # reshape for passing through network
-            x_ = x_full.view(mb * (d * d) * (d * d), 58+19)  # (64*25*25x(50+48+19)) = (40.000, 117)
+            x_ = x_full.view(mb * (d * d) * (d * d), 58+19)  # (64*25*25x(10+48+19))
             
         x_ = self.g_fc1(x_)
         x_ = F.relu(x_)
