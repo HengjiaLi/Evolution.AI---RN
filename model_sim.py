@@ -1,4 +1,8 @@
-#simple RN
+"""
+Pytorch implementation of the Relational Network with the arbitrary coordinate PE
+"""
+
+# import packages
 import numpy as np
 import torch
 import torch.nn as nn
@@ -6,11 +10,11 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
-
+"""A simple CNN model augmented with the RN"""
 class ConvInputModel(nn.Module):
     def __init__(self):
         super(ConvInputModel, self).__init__()
-        
+        # 4 conv layers, 24 filers per layer, filter size: 3x3
         self.conv1 = nn.Conv2d(3, 24, 3, stride=2, padding=1)
         self.batchNorm1 = nn.BatchNorm2d(24)
         self.conv2 = nn.Conv2d(24, 24, 3, stride=2, padding=1)
@@ -24,7 +28,7 @@ class ConvInputModel(nn.Module):
     def forward(self, img):
         """convolution"""
         x = self.conv1(img)
-        x = F.relu(x)
+        x = F.relu(x)# Relu for activation
         x = self.batchNorm1(x)
         x = self.conv2(x)
         x = F.relu(x)
@@ -35,52 +39,52 @@ class ConvInputModel(nn.Module):
         x = self.conv4(x)
         x = F.relu(x)
         x = self.batchNorm4(x)
-        return x
+        return x # resulting feature map resolution: 5x5
 
-  
+"""Fully coonected layers at the end of RN """  
 class FCOutputModel(nn.Module):
     def __init__(self):
         super(FCOutputModel, self).__init__()
 
-        self.fc2 = nn.Linear(256, 256)
-        self.fc3 = nn.Linear(256, 10)
+        self.fc2 = nn.Linear(256, 256)# take input from upstream RN
+        self.fc3 = nn.Linear(256, 10)# classify to 10 possible answers
 
     def forward(self, x):
         x = self.fc2(x)
         x = F.relu(x)
         x = F.dropout(x)
         x = self.fc3(x)
-        return F.log_softmax(x, dim=1)
+        return F.log_softmax(x, dim=1)# log_softmax on the output
 
+"""Define the train/test methods of RN"""
 class BasicModel(nn.Module):
     def __init__(self, args, name):
         super(BasicModel, self).__init__()
         self.name=name
 
     def train_(self, input_img, input_qst, label):
-        self.optimizer.zero_grad()
+        self.optimizer.zero_grad()# initialise optimizer
         output = self(input_img, input_qst)
-        loss = F.nll_loss(output, label)
-        loss.backward()
-        self.optimizer.step()
-        pred = output.data.max(1)[1]
-        correct = pred.eq(label.data).cpu().sum()
+        loss = F.nll_loss(output, label)# negative log likelihhod loss
+        loss.backward()# back-propagation
+        self.optimizer.step()# update parameter
+        pred = output.data.max(1)[1]#prediction result
+        correct = pred.eq(label.data).cpu().sum()# number of correct predictions
         accuracy = correct * 100. / len(label)
         return accuracy, loss
         
     def test_(self, input_img, input_qst, label):
         output = self(input_img, input_qst)
-        loss = F.nll_loss(output, label)
-        pred = output.data.max(1)[1]
-        correct = pred.eq(label.data).cpu().sum()
+        loss = F.nll_loss(output, label)# negative log likelihhod loss
+        pred = output.data.max(1)[1]#prediction result
+        correct = pred.eq(label.data).cpu().sum()# number of correct predictions
         accuracy = correct * 100. / len(label)
         return accuracy, loss
 
     def save_model(self, epoch):
         #torch.save(self.state_dict(), 'model/epoch_{}_{:02d}.pth'.format(self.name, epoch))
         model_save_name = 'sim.pth'
-        path = F"/content/drive/My Drive/Evolution.AI---RN/{model_save_name}" 
-        
+        path = F"/content/drive/My Drive/Evolution.AI---RN/{model_save_name}" #Save model on Gdirve
         torch.save(self.state_dict(), path)
 
 
@@ -88,11 +92,10 @@ class RN(BasicModel):
     def __init__(self, args):
         super(RN, self).__init__(args, 'RN')
         #print('sim')
-        self.conv = ConvInputModel()
-        
+        self.conv = ConvInputModel()# conv layers
         self.relation_type = args.relation_type
         
-        ##(number of filters per object+coordinate of object)*2+question vector
+        ##(number of filters per object + coordinate of object)*2+question vector = (24+2)*2+19
         self.g_fc1 = nn.Linear((24+2)*2+19, 256)
 
         self.g_fc2 = nn.Linear(256, 256)
@@ -101,6 +104,7 @@ class RN(BasicModel):
 
         self.f_fc1 = nn.Linear(256, 256)
 
+        # Generate X-Y coordinate tensor
         self.coord_oi = torch.FloatTensor(args.batch_size, 2)
         self.coord_oj = torch.FloatTensor(args.batch_size, 2)
         if args.cuda:
@@ -112,33 +116,30 @@ class RN(BasicModel):
         # prepare coord tensor
         def cvt_coord(i):
             return [(i//5-2)/2., (i%5-2)/2.]
-            #return [(i//5-2)/2.,np.random.rand()]
+            #return [(i//5-2)/2.,np.random.rand()] # randomise one of the coordinate
         
         self.coord_tensor = torch.FloatTensor(args.batch_size, 25, 2)
         if args.cuda:
             self.coord_tensor = self.coord_tensor.cuda()
         self.coord_tensor = Variable(self.coord_tensor)
-        np_coord_tensor = np.zeros((args.batch_size, 25, 2))#64x25x2
-        for i in range(25):#5x5 feature map
+        np_coord_tensor = np.zeros((args.batch_size, 25, 2))#bsx25x2
+        for i in range(25):# 5x5 feature map
             np_coord_tensor[:,i,:] = np.array( cvt_coord(i) )
         self.coord_tensor.data.copy_(torch.from_numpy(np_coord_tensor))
 
-
-        self.fcout = FCOutputModel()
+        self.fcout = FCOutputModel()# fully connected layers
         
         self.optimizer = optim.Adam(self.parameters(), lr=args.lr)
 
 
     def forward(self, img, qst):
-        x = self.conv(img) ## x = (64 x 24 x 5 x 5)
+        x = self.conv(img) # x = (64 x 24 x 5 x 5)
         
         """g"""
-        mb = x.size()[0]#mini batch
+        mb = x.size()[0]#mini batch size
         n_channels = x.size()[1]
         d = x.size()[2]
-        # x_flat = (64 x 25 x 24)
-        x_flat = x.view(mb,n_channels,d*d).permute(0,2,1)
-        
+        x_flat = x.view(mb,n_channels,d*d).permute(0,2,1)#(64 x 25 x 24)
         # add coordinates
         x_flat = torch.cat([x_flat, self.coord_tensor],2)
         
@@ -149,17 +150,17 @@ class RN(BasicModel):
             qst = torch.unsqueeze(qst, 2)
 
             # cast all pairs against each other
-            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x26+11)
-            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x26+11)
-            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x26+11)
-            x_j = torch.cat([x_j, qst], 3)
-            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x26+11)
+            x_i = torch.unsqueeze(x_flat, 1)  # (64x1x25x26)
+            x_i = x_i.repeat(1, 25, 1, 1)  # (64x25x25x26)
+            x_j = torch.unsqueeze(x_flat, 2)  # (64x25x1x26)
+            x_j = torch.cat([x_j, qst], 3)# (64x25x1x26+19)
+            x_j = x_j.repeat(1, 1, 25, 1)  # (64x25x25x26+19)
             
             # concatenate all together
-            x_full = torch.cat([x_i,x_j],3) # (64x25x25x2*26+11)
+            x_full = torch.cat([x_i,x_j],3) # (64x25x25x2*26+19)
         
             # reshape for passing through network
-            x_ = x_full.view(mb * (d * d) * (d * d), 71)  # (64*25*25x(2*26+11)) = (40.000, 63)
+            x_ = x_full.view(mb * (d * d) * (d * d), 71)  # (64*25*25x(2*26+19)) = (40.000, 72)
             
         x_ = self.g_fc1(x_)
         x_ = F.relu(x_)
