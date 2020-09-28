@@ -11,7 +11,8 @@ Use Google Colab to execute the file run.ipynb, to train/test the target model u
 ## Main Scripts and Files
 
 run.ipynb -- A notebook for train/test the model using pixel dataset\
-run_state.ipynb -- A notebook for train/test the model using state description dataset
+run_state.ipynb -- A notebook for train/test the model using state description dataset\
+Faster_RCNN.ipynb -- Experiment on Faster-RCNN and Sort-of-CLEVR
 
 more_clevr.py -- Generate the extended pixel version of the Sort-of-CLEVR dataset.\
 more_clevr_state.py -- Generate the extended state description version of the Sort-of-CLEVR dataset.
